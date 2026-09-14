@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-slate-50 text-ink antialiased;
+    }
+
+    ::selection {
+        background: #d5e2ef;
+    }
+}
+
+[x-cloak] {
+    display: none !important;
+}

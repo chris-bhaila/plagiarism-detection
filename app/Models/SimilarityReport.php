@@ -1,0 +1,142 @@
+<?php
+
+namespace App\Models;
+
+use Database\Factories\SimilarityReportFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class SimilarityReport extends Model
+{
+    /** @use HasFactory<SimilarityReportFactory> */
+    use HasFactory;
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_REVIEWED = 'reviewed';
+
+    public const STATUS_DISMISSED = 'dismissed';
+
+    public const STATUS_CONFIRMED = 'confirmed';
+
+    protected $fillable = [
+        'submission_a_id',
+        'submission_b_id',
+        'lexical_score',
+        'semantic_score',
+        'combined_score',
+        'status',
+        'matched_shingles',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'lexical_score' => 'float',
+            'semantic_score' => 'float',
+            'combined_score' => 'float',
+            'matched_shingles' => 'array',
+        ];
+    }
+
+    /**
+     * @return BelongsTo<Submission, $this>
+     */
+    public function submissionA(): BelongsTo
+    {
+        return $this->belongsTo(Submission::class, 'submission_a_id');
+    }
+
+    /**
+     * @return BelongsTo<Submission, $this>
+     */
+    public function submissionB(): BelongsTo
+    {
+        return $this->belongsTo(Submission::class, 'submission_b_id');
+    }
+
+    /**
+     * Which side (lexical/semantic) mainly drove a flag, used for the
+     * dashboard's "what drove each flag" breakdown. Scores within 5
+     * points of each other count as "both".
+     */
+    public function dominantSignal(): string
+    {
+        $diff = $this->lexical_score - $this->semantic_score;
+
+        if (abs($diff) < 0.05) {
+            return 'both';
+        }
+
+        return $diff > 0 ? 'lexical' : 'semantic';
+    }
+
+    /**
+     * Tailwind classes for a Low/Medium/High score badge, given the
+     * assignment's flagging threshold. High = at or above the threshold,
+     * Medium = at or above half the threshold, Low = below that.
+     *
+     * @return array{label: string, bg: string, ink: string, border: string}
+     */
+    public static function scoreBand(float $score, float $threshold): array
+    {
+        if ($score >= $threshold) {
+            return ['label' => 'High', 'bg' => 'bg-danger-bg', 'ink' => 'text-danger-ink', 'border' => 'border-danger-ink'];
+        }
+
+        if ($score >= $threshold / 2) {
+            return ['label' => 'Medium', 'bg' => 'bg-warn-bg', 'ink' => 'text-warn-ink', 'border' => 'border-warn-ink'];
+        }
+
+        return ['label' => 'Low', 'bg' => 'bg-ok-bg', 'ink' => 'text-ok-ink', 'border' => 'border-ok-ink'];
+    }
+
+    /**
+     * Tailwind classes for a status badge.
+     *
+     * @return array{bg: string, fg: string, border: string}
+     */
+    public static function statusStyles(?string $status): array
+    {
+        return match ($status) {
+            self::STATUS_PENDING => ['bg' => 'bg-warn-bg', 'fg' => 'text-warn-deep', 'border' => 'border-warn-border'],
+            self::STATUS_REVIEWED => ['bg' => 'bg-info-bg', 'fg' => 'text-info-ink', 'border' => 'border-info-border'],
+            self::STATUS_CONFIRMED => ['bg' => 'bg-danger-bg', 'fg' => 'text-danger-deep', 'border' => 'border-danger-border'],
+            self::STATUS_DISMISSED => ['bg' => 'bg-slate-100', 'fg' => 'text-slate-900', 'border' => 'border-slate-300'],
+            default => ['bg' => 'bg-ok-bg', 'fg' => 'text-ok-deep', 'border' => 'border-ok-border'],
+        };
+    }
+
+    /**
+     * Render a submission's text with matched passages wrapped in <mark>,
+     * based on this report's matched_shingles data. Each shingle entry may
+     * carry a 'text' (the matched phrase) and a 'type' ('lexical' or
+     * 'semantic', default 'lexical') controlling highlight color.
+     */
+    public function highlight(string $text): string
+    {
+        $escaped = e($text);
+
+        foreach ($this->matched_shingles ?? [] as $shingle) {
+            $phrase = $shingle['text'] ?? null;
+
+            if (! $phrase) {
+                continue;
+            }
+
+            $classes = ($shingle['type'] ?? 'lexical') === 'semantic'
+                ? 'bg-[#dfe9e6] border-b-2 border-[#4e8478]'
+                : 'bg-[#cfe0f0] border-b-2 border-[#2a5c8f]';
+
+            $escapedPhrase = e($phrase);
+            $escaped = str_ireplace(
+                $escapedPhrase,
+                '<mark class="'.$classes.' px-0 py-0.5">'.$escapedPhrase.'</mark>',
+                $escaped,
+            );
+        }
+
+        return nl2br($escaped);
+    }
+}
