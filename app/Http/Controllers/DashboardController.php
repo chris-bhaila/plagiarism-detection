@@ -19,7 +19,7 @@ class DashboardController extends Controller
         $reports = SimilarityReport::with(['submissionA.assignment.course', 'submissionB.assignment'])->get();
 
         $flagged = $reports->filter(
-            fn (SimilarityReport $r) => $r->combined_score >= ($r->submissionA->assignment->similarity_threshold ?? 0.4)
+            fn (SimilarityReport $r) => $r->combined_score >= ($r->submissionA->assignment->similarity_threshold ?? 0.35)
         );
 
         $totalSubmissions = Submission::count();

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Assignment;
+use App\Models\SimilarityReport;
 use App\Repositories\Contracts\AssignmentRepositoryInterface;
+use App\Repositories\Contracts\SimilarityReportRepositoryInterface;
 use App\Repositories\Contracts\SubmissionRepositoryInterface;
 use App\Services\SimilarityCheckClient;
 use Illuminate\Http\RedirectResponse;
@@ -15,6 +17,7 @@ class StudentAssignmentController extends Controller
     public function __construct(
         protected AssignmentRepositoryInterface $assignments,
         protected SubmissionRepositoryInterface $submissions,
+        protected SimilarityReportRepositoryInterface $similarityReports,
         protected SimilarityCheckClient $similarityCheckClient,
     ) {}
 
@@ -66,12 +69,27 @@ class StudentAssignmentController extends Controller
             'submitted_at' => now(),
         ]);
 
-        // TODO: dispatch this to a queued job once the FastAPI service is wired up.
-        $this->similarityCheckClient->checkSubmission(
+        // TODO: dispatch this to a queued job once submissions/checks get big
+        // enough that doing it inline noticeably delays the response.
+        $results = $this->similarityCheckClient->checkSubmission(
             $submission->id,
             $submission->text_content,
             $assignment->id,
         );
+
+        foreach ($results as $result) {
+            $this->similarityReports->create([
+                'submission_a_id' => $submission->id,
+                'submission_b_id' => $result['compared_submission_id'],
+                'lexical_score' => $result['lexical_score'],
+                'semantic_score' => $result['semantic_score'],
+                'combined_score' => $result['combined_score'],
+                'matched_shingles' => $result['matched_shingles'] ?? null,
+                'status' => $result['combined_score'] >= $assignment->similarity_threshold
+                    ? SimilarityReport::STATUS_PENDING
+                    : SimilarityReport::STATUS_CLEARED,
+            ]);
+        }
 
         return redirect()->route('assignments.submit.show', $assignment)
             ->with('status', 'Submission received.');

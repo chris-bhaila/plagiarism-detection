@@ -19,7 +19,10 @@ class AuthenticationTest extends TestCase
 
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
-        $user = User::factory()->create();
+        // The role column has a DB-level default ('student') that isn't
+        // reflected on this in-memory instance until refreshed — needed so
+        // homeRouteName() below matches what the real login redirect uses.
+        $user = User::factory()->create()->refresh();
 
         $response = $this->post('/login', [
             'email' => $user->email,
@@ -27,7 +30,7 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertRedirect(route($user->homeRouteName(), absolute: false));
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void

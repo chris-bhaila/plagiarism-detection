@@ -7,9 +7,11 @@ use App\Repositories\Contracts\AssignmentRepositoryInterface;
 use App\Repositories\Contracts\CourseRepositoryInterface;
 use App\Repositories\Contracts\SimilarityReportRepositoryInterface;
 use App\Repositories\Contracts\SubmissionRepositoryInterface;
+use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Repositories\CourseRepository;
 use App\Repositories\SimilarityReportRepository;
 use App\Repositories\SubmissionRepository;
+use App\Repositories\UserRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -23,6 +25,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(AssignmentRepositoryInterface::class, AssignmentRepository::class);
         $this->app->bind(SubmissionRepositoryInterface::class, SubmissionRepository::class);
         $this->app->bind(SimilarityReportRepositoryInterface::class, SimilarityReportRepository::class);
+        $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
     }
 
     /**

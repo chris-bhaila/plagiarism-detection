@@ -8,7 +8,7 @@
 <nav x-data="{ open: false }" class="bg-white border-b border-slate-300 sticky top-0 z-20">
     <div class="max-w-[1360px] mx-auto px-8 flex items-center gap-10 h-[60px]">
         <!-- Logo -->
-        <a href="{{ route('home') }}" class="flex items-baseline gap-2.5 shrink-0">
+        <a href="{{ route(Auth::user()->homeRouteName()) }}" class="flex items-baseline gap-2.5 shrink-0">
             <span class="relative top-[1px] inline-block w-[18px] h-[18px] rounded-[3px] border-[2.5px] border-navy">
                 <span class="absolute left-[1px] top-[4px] w-[9px] h-[2px] bg-navy"></span>
             </span>
@@ -32,6 +32,15 @@
             @if (Auth::user()->isTeacher() || Auth::user()->isAdmin())
                 <x-nav-tab :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                     Analytics
+                </x-nav-tab>
+            @endif
+
+            @if (Auth::user()->isAdmin())
+                <x-nav-tab :href="route('admin.teachers')" :active="request()->routeIs('admin.teachers')">
+                    Teachers
+                </x-nav-tab>
+                <x-nav-tab :href="route('admin.students')" :active="request()->routeIs('admin.students')">
+                    Students
                 </x-nav-tab>
             @endif
         </div>
@@ -82,6 +91,15 @@
             @if (Auth::user()->isTeacher() || Auth::user()->isAdmin())
                 <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                     Analytics
+                </x-responsive-nav-link>
+            @endif
+
+            @if (Auth::user()->isAdmin())
+                <x-responsive-nav-link :href="route('admin.teachers')" :active="request()->routeIs('admin.teachers')">
+                    Teachers
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.students')" :active="request()->routeIs('admin.students')">
+                    Students
                 </x-responsive-nav-link>
             @endif
         </div>

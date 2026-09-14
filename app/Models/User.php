@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -22,6 +23,13 @@ class User extends Authenticatable
     public const ROLE_ADMIN = 'admin';
 
     /**
+     * The faculties students can belong to.
+     *
+     * @var list<string>
+     */
+    public const FACULTIES = ['BCA', 'BIM', 'BBM', 'BBA', 'B.Sc.'];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -31,6 +39,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'faculty',
+        'semester',
     ];
 
     /**
@@ -53,6 +63,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'semester' => 'integer',
+            'disabled_at' => 'datetime',
         ];
     }
 
@@ -76,6 +88,16 @@ class User extends Authenticatable
         return $this->hasMany(Submission::class, 'student_id');
     }
 
+    /**
+     * Courses this user (as a student) is enrolled in.
+     *
+     * @return BelongsToMany<Course, $this>
+     */
+    public function enrolledCourses(): BelongsToMany
+    {
+        return $this->belongsToMany(Course::class, 'course_user')->withTimestamps();
+    }
+
     public function isStudent(): bool
     {
         return $this->role === self::ROLE_STUDENT;
@@ -89,6 +111,11 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function isDisabled(): bool
+    {
+        return $this->disabled_at !== null;
     }
 
     /**

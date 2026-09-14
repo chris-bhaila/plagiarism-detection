@@ -35,4 +35,22 @@ interface CourseRepositoryInterface
     public function update(Course $course, array $data): Course;
 
     public function delete(Course $course): bool;
+
+    /**
+     * Students not already enrolled in this course, optionally filtered by
+     * name/email search text, faculty, and/or semester (all combined with
+     * AND).
+     *
+     * @param  array{search?: ?string, faculty?: ?string, semester?: ?int}  $filters
+     * @return Collection<int, User>
+     */
+    public function searchAvailableStudents(Course $course, array $filters): Collection;
+
+    /**
+     * Enroll the given student IDs in the course. Already-enrolled
+     * students are left alone rather than erroring.
+     *
+     * @param  array<int, int>  $studentIds
+     */
+    public function enrollStudents(Course $course, array $studentIds): void;
 }

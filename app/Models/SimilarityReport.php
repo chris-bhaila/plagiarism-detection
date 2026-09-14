@@ -20,6 +20,13 @@ class SimilarityReport extends Model
 
     public const STATUS_CONFIRMED = 'confirmed';
 
+    /**
+     * Auto-assigned when a comparison scores below the assignment's
+     * threshold — distinct from STATUS_DISMISSED, which is a human
+     * decision on a report that was actually flagged.
+     */
+    public const STATUS_CLEARED = 'cleared';
+
     protected $fillable = [
         'submission_a_id',
         'submission_b_id',
@@ -104,28 +111,32 @@ class SimilarityReport extends Model
             self::STATUS_REVIEWED => ['bg' => 'bg-info-bg', 'fg' => 'text-info-ink', 'border' => 'border-info-border'],
             self::STATUS_CONFIRMED => ['bg' => 'bg-danger-bg', 'fg' => 'text-danger-deep', 'border' => 'border-danger-border'],
             self::STATUS_DISMISSED => ['bg' => 'bg-slate-100', 'fg' => 'text-slate-900', 'border' => 'border-slate-300'],
+            self::STATUS_CLEARED => ['bg' => 'bg-ok-bg', 'fg' => 'text-ok-deep', 'border' => 'border-ok-border'],
             default => ['bg' => 'bg-ok-bg', 'fg' => 'text-ok-deep', 'border' => 'border-ok-border'],
         };
     }
 
     /**
      * Render a submission's text with matched passages wrapped in <mark>,
-     * based on this report's matched_shingles data. Each shingle entry may
-     * carry a 'text' (the matched phrase) and a 'type' ('lexical' or
-     * 'semantic', default 'lexical') controlling highlight color.
+     * based on this report's matched_shingles data. The similarity-check
+     * API returns this as a flat array of matched phrase strings; a
+     * shingle may also be an object with a 'text' key and an optional
+     * 'type' ('lexical' or 'semantic', default 'lexical') controlling
+     * highlight color — kept for older/seeded data in that shape.
      */
     public function highlight(string $text): string
     {
         $escaped = e($text);
 
         foreach ($this->matched_shingles ?? [] as $shingle) {
-            $phrase = $shingle['text'] ?? null;
+            $phrase = is_array($shingle) ? ($shingle['text'] ?? null) : $shingle;
 
             if (! $phrase) {
                 continue;
             }
 
-            $classes = ($shingle['type'] ?? 'lexical') === 'semantic'
+            $type = is_array($shingle) ? ($shingle['type'] ?? 'lexical') : 'lexical';
+            $classes = $type === 'semantic'
                 ? 'bg-[#dfe9e6] border-b-2 border-[#4e8478]'
                 : 'bg-[#cfe0f0] border-b-2 border-[#2a5c8f]';
 

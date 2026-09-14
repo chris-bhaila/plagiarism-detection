@@ -32,10 +32,11 @@ class AssignmentRepository implements AssignmentRepositoryInterface
 
     public function forStudent(User $student): Collection
     {
-        // NOTE: there is no course enrollment table yet, so this currently
-        // returns all assignments. Once enrollment is modeled, scope this
-        // to the courses the student is actually enrolled in.
-        return Assignment::with('course')->get();
+        $courseIds = $student->enrolledCourses()->pluck('courses.id');
+
+        return Assignment::with('course')
+            ->whereIn('course_id', $courseIds)
+            ->get();
     }
 
     public function create(array $data): Assignment

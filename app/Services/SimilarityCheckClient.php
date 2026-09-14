@@ -2,14 +2,10 @@
 
 namespace App\Services;
 
-/**
- * Thin HTTP client for the external similarity-checking service.
- *
- * The actual detection logic (lexical shingling + Jaccard similarity,
- * combined with Sentence-BERT semantic similarity) lives in a separate
- * Python FastAPI service. This class is only responsible for talking to
- * it over HTTP.
- */
+use App\Models\Submission;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
 class SimilarityCheckClient
 {
     protected string $baseUrl;
@@ -20,39 +16,51 @@ class SimilarityCheckClient
     }
 
     /**
-     * Send a submission's text to the similarity-check service and get
-     * back its similarity scores against other submissions for the same
-     * assignment.
-     *
-     * @return array{lexical_score: float, semantic_score: float, combined_score: float}
+     * Check a new submission against all existing submissions for the
+     * same assignment. Returns an array of score results, one per
+     * comparison, or an empty array if the check fails.
      */
     public function checkSubmission(int $submissionId, string $text, int $assignmentId): array
     {
-        // TODO: wire this up to the real FastAPI endpoint, e.g.:
-        //
-        // $response = Http::baseUrl($this->baseUrl)
-        //     ->timeout(30)
-        //     ->post('/check', [
-        //         'submission_id' => $submissionId,
-        //         'assignment_id' => $assignmentId,
-        //         'text' => $text,
-        //     ]);
-        //
-        // if ($response->failed()) {
-        //     Log::error('Similarity check request failed', [
-        //         'submission_id' => $submissionId,
-        //         'status' => $response->status(),
-        //     ]);
-        //
-        //     throw new \RuntimeException('Similarity check service request failed.');
-        // }
-        //
-        // return $response->json();
+        $existingSubmissions = Submission::where('assignment_id', $assignmentId)
+            ->where('id', '!=', $submissionId)
+            ->get(['id', 'text_content']);
 
-        return [
-            'lexical_score' => 0.0,
-            'semantic_score' => 0.0,
-            'combined_score' => 0.0,
+        if ($existingSubmissions->isEmpty()) {
+            return [];
+        }
+
+        $payload = [
+            'new_submission' => [
+                'id' => $submissionId,
+                'text' => $text,
+            ],
+            'existing_submissions' => $existingSubmissions->map(function ($submission) {
+                return [
+                    'id' => $submission->id,
+                    'text' => $submission->text_content,
+                ];
+            })->values()->toArray(),
         ];
+
+        try {
+            $response = Http::timeout(30)
+                ->post("{$this->baseUrl}/check-submission", $payload);
+
+            if ($response->failed()) {
+                Log::error('Similarity check failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+                return [];
+            }
+
+            return $response->json('results', []);
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('Could not reach similarity service', [
+                'message' => $e->getMessage(),
+            ]);
+            return [];
+        }
     }
 }

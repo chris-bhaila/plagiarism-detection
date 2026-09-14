@@ -23,7 +23,7 @@ class AssignmentFactory extends Factory
             'title' => fake()->sentence(4),
             'description' => fake()->paragraph(),
             'due_date' => fake()->dateTimeBetween('+3 days', '+3 weeks'),
-            'similarity_threshold' => 0.4,
+            'similarity_threshold' => 0.35,
         ];
     }
 }

@@ -21,6 +21,44 @@ class ProfileTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_profile_page_shows_a_students_faculty_and_semester(): void
+    {
+        $student = User::factory()->create([
+            'role' => User::ROLE_STUDENT,
+            'faculty' => 'BIM',
+            'semester' => 5,
+        ]);
+
+        $response = $this->actingAs($student)->get('/profile');
+
+        $response->assertOk();
+        $response->assertSeeText('BIM');
+        $response->assertSeeText('5');
+    }
+
+    public function test_faculty_and_semester_cannot_be_changed_via_the_profile_form(): void
+    {
+        $student = User::factory()->create([
+            'role' => User::ROLE_STUDENT,
+            'faculty' => 'BCA',
+            'semester' => 1,
+        ]);
+
+        $response = $this->actingAs($student)->patch('/profile', [
+            'name' => $student->name,
+            'email' => $student->email,
+            'faculty' => 'BBM',
+            'semester' => 7,
+        ]);
+
+        $response->assertSessionHasNoErrors()->assertRedirect('/profile');
+
+        // The submitted faculty/semester are silently ignored, not applied.
+        $student->refresh();
+        $this->assertSame('BCA', $student->faculty);
+        $this->assertSame(1, $student->semester);
+    }
+
     public function test_profile_information_can_be_updated(): void
     {
         $user = User::factory()->create();

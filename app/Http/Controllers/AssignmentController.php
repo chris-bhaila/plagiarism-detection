@@ -74,10 +74,15 @@ class AssignmentController extends Controller
                 ];
             });
 
+        // "Cleared" covers both a submission with no comparisons at all yet
+        // (topReport is null) and one whose best comparison still scored
+        // below the threshold (topReport->status is 'cleared').
+        $isCleared = fn ($r) => $r->topReport === null || $r->status === SimilarityReport::STATUS_CLEARED;
+
         $totalCount = $rows->count();
         $flaggedCount = $rows->filter(fn ($r) => $r->score >= $threshold)->count();
         $pendingCount = $rows->filter(fn ($r) => $r->status === SimilarityReport::STATUS_PENDING)->count();
-        $clearedCount = $rows->filter(fn ($r) => $r->topReport === null)->count();
+        $clearedCount = $rows->filter($isCleared)->count();
         $medianScore = $rows->pluck('score')->median() ?? 0.0;
 
         $filter = $request->query('filter', 'all');
@@ -85,7 +90,7 @@ class AssignmentController extends Controller
         $filtered = match ($filter) {
             'flagged' => $rows->filter(fn ($r) => $r->score >= $threshold),
             'pending' => $rows->filter(fn ($r) => $r->status === SimilarityReport::STATUS_PENDING),
-            'cleared' => $rows->filter(fn ($r) => $r->topReport === null),
+            'cleared' => $rows->filter($isCleared),
             default => $rows,
         };
 

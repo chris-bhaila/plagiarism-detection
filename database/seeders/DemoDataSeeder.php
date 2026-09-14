@@ -31,9 +31,9 @@ class DemoDataSeeder extends Seeder
         ]);
 
         $students = collect([
-            ['name' => 'Sam Student', 'email' => 'sam@example.com'],
-            ['name' => 'Riley Student', 'email' => 'riley@example.com'],
-            ['name' => 'Jordan Student', 'email' => 'jordan@example.com'],
+            ['name' => 'Sam Student', 'email' => 'sam@example.com', 'faculty' => 'BCA', 'semester' => 3],
+            ['name' => 'Riley Student', 'email' => 'riley@example.com', 'faculty' => 'BIM', 'semester' => 5],
+            ['name' => 'Jordan Student', 'email' => 'jordan@example.com', 'faculty' => 'BBA', 'semester' => 2],
         ])->map(fn (array $attrs) => User::factory()->create([
             ...$attrs,
             'role' => User::ROLE_STUDENT,
@@ -45,12 +45,14 @@ class DemoDataSeeder extends Seeder
             'code' => 'CS101',
         ]);
 
+        $course->students()->attach($students->pluck('id'));
+
         $assignment = Assignment::factory()->create([
             'course_id' => $course->id,
             'title' => 'Essay: The History of the Internet',
             'description' => 'Write a 1000-word essay on the history and evolution of the internet.',
             'due_date' => now()->addWeek(),
-            'similarity_threshold' => 0.4,
+            'similarity_threshold' => 0.35,
         ]);
 
         $submissionOne = Submission::factory()->create([

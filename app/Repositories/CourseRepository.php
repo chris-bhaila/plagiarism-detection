@@ -45,4 +45,28 @@ class CourseRepository implements CourseRepositoryInterface
     {
         return (bool) $course->delete();
     }
+
+    public function searchAvailableStudents(Course $course, array $filters): Collection
+    {
+        $enrolledIds = $course->students()->pluck('users.id');
+
+        return User::query()
+            ->where('role', User::ROLE_STUDENT)
+            ->whereNotIn('id', $enrolledIds)
+            ->when($filters['search'] ?? null, function ($query, string $search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
+            ->when($filters['faculty'] ?? null, fn ($query, string $faculty) => $query->where('faculty', $faculty))
+            ->when($filters['semester'] ?? null, fn ($query, int $semester) => $query->where('semester', $semester))
+            ->orderBy('name')
+            ->get();
+    }
+
+    public function enrollStudents(Course $course, array $studentIds): void
+    {
+        $course->students()->syncWithoutDetaching($studentIds);
+    }
 }

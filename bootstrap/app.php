@@ -14,6 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
         ]);
+
+        $middleware->appendToGroup('web', [
+            \App\Http\Middleware\EnsureAccountNotDisabled::class,
+            \App\Http\Middleware\EnsureStudentProfileComplete::class,
+            \App\Http\Middleware\PreventBackHistoryCache::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

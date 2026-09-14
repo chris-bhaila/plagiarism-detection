@@ -3,22 +3,76 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
     /**
-     * Display the user's profile form.
+     * Display the user's profile form, along with a quick role-relevant
+     * summary of their account.
      */
     public function edit(Request $request): View
     {
+        $user = $request->user();
+
+        $stats = match (true) {
+            $user->isStudent() => [
+                'Enrolled courses' => $user->enrolledCourses()->count(),
+                'Submissions made' => $user->submissions()->count(),
+            ],
+            $user->isTeacher() => [
+                'Courses taught' => $user->coursesTaught()->count(),
+            ],
+            default => [],
+        };
+
         return view('profile.edit', [
-            'user' => $request->user(),
+            'user' => $user,
+            'stats' => $stats,
         ]);
+    }
+
+    /**
+     * Show the form prompting a student to fill in faculty/semester, shown
+     * (via EnsureStudentProfileComplete) before they can use anything else.
+     *
+     * Faculty/semester are a one-time choice — a student who already has
+     * both set is bounced away rather than allowed back in to change them.
+     */
+    public function completeForm(Request $request): View|RedirectResponse
+    {
+        if ($request->user()->faculty && $request->user()->semester) {
+            return redirect()->route('assignments.index');
+        }
+
+        return view('profile.complete', [
+            'faculties' => User::FACULTIES,
+        ]);
+    }
+
+    /**
+     * Save the student's faculty/semester and send them on their way.
+     * Refuses to run again once both are already set — see completeForm().
+     */
+    public function completeStore(Request $request): RedirectResponse
+    {
+        abort_if($request->user()->faculty && $request->user()->semester, 403);
+
+        $validated = $request->validate([
+            'faculty' => ['required', 'string', Rule::in(User::FACULTIES)],
+            'semester' => ['required', 'integer', 'between:1,8'],
+        ]);
+
+        $request->user()->update($validated);
+
+        return redirect()->route('assignments.index')
+            ->with('status', 'Profile completed.');
     }
 
     /**
