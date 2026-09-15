@@ -10,6 +10,7 @@ use App\Repositories\Contracts\SubmissionRepositoryInterface;
 use App\Services\SimilarityCheckClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class StudentAssignmentController extends Controller
@@ -22,34 +23,55 @@ class StudentAssignmentController extends Controller
     ) {}
 
     /**
-     * List assignments across the authenticated student's enrolled courses.
+     * List assignments across the authenticated student's enrolled courses,
+     * each annotated with the student's own submission (if any) so the
+     * list can show Submitted / Not submitted / Overdue.
      */
     public function index(Request $request): View
     {
-        $assignments = $this->assignments->forStudent($request->user());
+        $student = $request->user();
+        $assignments = $this->assignments->forStudent($student);
 
-        return view('student.assignments.index', compact('assignments'));
+        $latestByAssignment = $this->submissions->forStudent($student)
+            ->sortByDesc('submitted_at')
+            ->unique('assignment_id')
+            ->keyBy('assignment_id');
+
+        $undated = now()->addCentury();
+
+        $rows = $assignments->map(fn (Assignment $assignment) => (object) [
+            'assignment' => $assignment,
+            'submission' => $latestByAssignment->get($assignment->id),
+        ])->sortBy(fn ($row) => $row->assignment->due_date ?? $undated)->values();
+
+        return view('student.assignments.index', ['rows' => $rows]);
     }
 
     /**
-     * Show the submission form, or a receipt if the student already has a
-     * submission for this assignment. ?revise=1 forces the form back open
-     * so the student can submit a fresh attempt.
+     * Show the submission form, or a receipt (plus any earlier attempts)
+     * if the student already has a submission for this assignment.
+     * ?revise=1 forces the form back open so the student can submit a
+     * fresh attempt.
      */
     public function showSubmitForm(Request $request, Assignment $assignment): View
     {
-        $submission = $this->latestSubmissionFor($request, $assignment);
+        $this->authorizeEnrollment($request, $assignment);
 
-        if ($submission && ! $request->boolean('revise')) {
+        $submissions = $this->submissionsForAssignment($request, $assignment);
+        $latest = $submissions->first();
+
+        if ($latest && ! $request->boolean('revise')) {
             return view('student.assignments.submit', [
                 'assignment' => $assignment,
-                'submission' => $submission,
+                'submission' => $latest,
+                'previousSubmissions' => $submissions->slice(1)->values(),
             ]);
         }
 
         return view('student.assignments.submit', [
             'assignment' => $assignment,
             'submission' => null,
+            'previousSubmissions' => collect(),
         ]);
     }
 
@@ -58,6 +80,8 @@ class StudentAssignmentController extends Controller
      */
     public function submit(Request $request, Assignment $assignment): RedirectResponse
     {
+        $this->authorizeEnrollment($request, $assignment);
+
         $validated = $request->validate([
             'text_content' => ['required', 'string'],
         ]);
@@ -95,11 +119,28 @@ class StudentAssignmentController extends Controller
             ->with('status', 'Submission received.');
     }
 
-    protected function latestSubmissionFor(Request $request, Assignment $assignment)
+    /**
+     * A student may only open or submit to an assignment belonging to a
+     * course in their own semester — otherwise 404, matching how the rest
+     * of the app treats "not in scope" (see CourseController::showStudent).
+     */
+    protected function authorizeEnrollment(Request $request, Assignment $assignment): void
+    {
+        abort_unless($assignment->course->semester_id === $request->user()->semester_id, 404);
+    }
+
+    /**
+     * Every submission the student has made for this assignment, newest
+     * first — not just the latest, so the receipt page can show a history
+     * of past attempts.
+     *
+     * @return Collection<int, \App\Models\Submission>
+     */
+    protected function submissionsForAssignment(Request $request, Assignment $assignment): Collection
     {
         return $this->submissions->forStudent($request->user())
             ->where('assignment_id', $assignment->id)
             ->sortByDesc('submitted_at')
-            ->first();
+            ->values();
     }
 }

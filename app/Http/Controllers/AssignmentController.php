@@ -12,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -30,7 +31,10 @@ class AssignmentController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'course_id' => ['required', 'exists:courses,id'],
+            'course_id' => [
+                'required',
+                Rule::exists('courses', 'id')->where('teacher_id', $request->user()->id),
+            ],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'due_date' => ['nullable', 'date'],
@@ -110,6 +114,8 @@ class AssignmentController extends Controller
      */
     public function submissions(Request $request, Assignment $assignment): View
     {
+        abort_if($assignment->course->teacher_id !== $request->user()->id, 403);
+
         $threshold = $assignment->similarity_threshold;
         $rows = $this->buildSubmissionRows($this->submissions, $assignment);
 

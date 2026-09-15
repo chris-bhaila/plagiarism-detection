@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Assignment;
 use App\Models\Course;
-use App\Models\Faculty;
 use App\Models\SimilarityReport;
 use App\Models\Submission;
 use App\Models\User;
@@ -90,7 +89,7 @@ class SimilarityCheckIntegrationTest extends TestCase
             'text_content' => $unrelatedText,
         ]);
 
-        $actingStudent = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => Faculty::factory()->withSemesters()->create()->semesters()->first()->id]);
+        $actingStudent = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $course->semester_id]);
 
         // Exercise the real flow: HTTP -> route -> role middleware ->
         // StudentAssignmentController::submit() -> SimilarityCheckClient.
@@ -187,7 +186,7 @@ class SimilarityCheckIntegrationTest extends TestCase
             'student_id' => User::factory()->create(['role' => User::ROLE_STUDENT])->id,
         ]);
 
-        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => Faculty::factory()->withSemesters()->create()->semesters()->first()->id]);
+        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $course->semester_id]);
 
         $response = $this->actingAs($student)->post(
             route('assignments.submit', $assignment),

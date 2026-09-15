@@ -143,6 +143,14 @@
                             class="inline-block text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light whitespace-nowrap">
                             <span x-text="notesOpen ? 'Hide notes' : 'Notes{{ $row->submission->notes->count() ? ' ('.$row->submission->notes->count().')' : '' }}'"></span>
                         </button>
+                        <form method="POST" action="{{ route('submissions.similarity-release.update', $row->submission) }}">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit"
+                                class="inline-block text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border whitespace-nowrap {{ $row->submission->isSimilarityReleased() ? 'border-ok-border bg-ok-bg text-ok-deep' : 'border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light' }}">
+                                {{ $row->submission->isSimilarityReleased() ? 'Released ✓' : 'Release to student' }}
+                            </button>
+                        </form>
                         @if ($row->topReport)
                             <a href="{{ route('similarity-reports.show', $row->topReport) }}"
                                class="inline-block text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light">

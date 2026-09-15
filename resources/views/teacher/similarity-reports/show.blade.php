@@ -66,9 +66,18 @@
                             </div>
 
                             <div x-data="{ notesOpen: false }" class="border-t border-slate-200 px-5 py-3.5">
-                                <button @click="notesOpen = !notesOpen" type="button" class="text-[12.5px] font-semibold text-navy hover:underline">
-                                    <span x-text="notesOpen ? 'Hide notes' : 'Notes{{ $submission->notes->count() ? ' ('.$submission->notes->count().')' : '' }} for {{ $submission->student->name }}'"></span>
-                                </button>
+                                <div class="flex items-center justify-between gap-3 flex-wrap">
+                                    <button @click="notesOpen = !notesOpen" type="button" class="text-[12.5px] font-semibold text-navy hover:underline">
+                                        <span x-text="notesOpen ? 'Hide notes' : 'Notes{{ $submission->notes->count() ? ' ('.$submission->notes->count().')' : '' }} for {{ $submission->student->name }}'"></span>
+                                    </button>
+                                    <form method="POST" action="{{ route('submissions.similarity-release.update', $submission) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="text-[12.5px] font-semibold {{ $submission->isSimilarityReleased() ? 'text-ok-deep' : 'text-navy' }} hover:underline">
+                                            {{ $submission->isSimilarityReleased() ? 'Released to student ✓ — unrelease' : 'Release status to student' }}
+                                        </button>
+                                    </form>
+                                </div>
 
                                 <div x-show="notesOpen" x-cloak class="mt-3">
                                     @forelse ($submission->notes as $note)

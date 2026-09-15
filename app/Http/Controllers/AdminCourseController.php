@@ -9,6 +9,7 @@ use App\Repositories\Contracts\AssignmentRepositoryInterface;
 use App\Repositories\Contracts\CourseRepositoryInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -104,12 +105,18 @@ class AdminCourseController extends Controller
     /**
      * Delete a course. Cascades to its assignments, submissions, and
      * similarity reports (see the FK constraints) — irreversible, so the
-     * UI confirms before submitting this.
+     * UI confirms before submitting this. Attachment files aren't covered
+     * by the DB cascade, so they're removed from disk explicitly first.
      */
     public function destroy(Course $course): RedirectResponse
     {
         $semesterId = $course->semester_id;
         $name = $course->name;
+
+        $course->assignments()
+            ->whereNotNull('attachment_path')
+            ->pluck('attachment_path')
+            ->each(fn (string $path) => Storage::delete($path));
 
         $this->courses->delete($course);
 

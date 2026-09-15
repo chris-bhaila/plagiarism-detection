@@ -117,6 +117,27 @@ class SimilarityReport extends Model
     }
 
     /**
+     * A coarser, reassurance-first status for the student-facing receipt
+     * page — deliberately doesn't expose the raw status name, score, or
+     * matched text, only whether they need to do anything. Shown only
+     * once a teacher/admin has released the submission (see
+     * Submission::isSimilarityReleased()); $status is null when the
+     * submission has no similarity reports at all yet.
+     *
+     * @return array{label: string, bg: string, fg: string, border: string}
+     */
+    public static function studentFacingLabel(?string $status): array
+    {
+        return match ($status) {
+            self::STATUS_CONFIRMED => ['label' => 'Flagged — contact your instructor', 'bg' => 'bg-danger-bg', 'fg' => 'text-danger-deep', 'border' => 'border-danger-border'],
+            self::STATUS_PENDING => ['label' => 'Under review by your instructor', 'bg' => 'bg-warn-bg', 'fg' => 'text-warn-deep', 'border' => 'border-warn-border'],
+            self::STATUS_REVIEWED => ['label' => 'Reviewed — no action needed', 'bg' => 'bg-info-bg', 'fg' => 'text-info-ink', 'border' => 'border-info-border'],
+            self::STATUS_DISMISSED, self::STATUS_CLEARED, null => ['label' => 'No concerns found', 'bg' => 'bg-ok-bg', 'fg' => 'text-ok-deep', 'border' => 'border-ok-border'],
+            default => ['label' => 'No concerns found', 'bg' => 'bg-ok-bg', 'fg' => 'text-ok-deep', 'border' => 'border-ok-border'],
+        };
+    }
+
+    /**
      * Render a submission's text with matched passages wrapped in <mark>,
      * based on this report's matched_shingles data. The similarity-check
      * API returns this as a flat array of matched phrase strings; a

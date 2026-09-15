@@ -190,6 +190,32 @@ class TeacherAssignmentManagementTest extends TestCase
         $this->assertDatabaseHas('assignments', ['id' => $assignment->id]);
     }
 
+    public function test_a_teacher_cannot_create_an_assignment_in_another_teachers_course(): void
+    {
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $otherTeacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $foreignCourse = Course::factory()->create(['teacher_id' => $otherTeacher->id, 'semester_id' => $semester->id]);
+
+        $this->actingAs($teacher)->post(route('assignments.store'), [
+            'course_id' => $foreignCourse->id,
+            'title' => 'Sneaky assignment',
+        ])->assertSessionHasErrors(['course_id']);
+
+        $this->assertDatabaseMissing('assignments', ['course_id' => $foreignCourse->id]);
+    }
+
+    public function test_a_teacher_cannot_view_another_teachers_submissions(): void
+    {
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $otherTeacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $course = Course::factory()->create(['teacher_id' => $otherTeacher->id, 'semester_id' => $semester->id]);
+        $assignment = Assignment::factory()->create(['course_id' => $course->id]);
+
+        $this->actingAs($teacher)->get(route('assignments.submissions', $assignment))->assertForbidden();
+    }
+
     public function test_teacher_can_edit_their_own_assignment(): void
     {
         $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);

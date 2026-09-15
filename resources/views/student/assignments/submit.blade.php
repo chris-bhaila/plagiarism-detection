@@ -8,6 +8,12 @@
         @endif
 
         @if ($submission)
+            @php
+                $released = $submission->isSimilarityReleased();
+                $studentLabel = $released
+                    ? \App\Models\SimilarityReport::studentFacingLabel($submission->topSimilarityReport()?->status)
+                    : null;
+            @endphp
             {{-- Submitted: receipt state --}}
             <div class="bg-white border border-slate-300 rounded-sm p-11">
                 <div class="w-10 h-10 rounded-full bg-ok-bg grid place-items-center">
@@ -35,9 +41,55 @@
                     </div>
                     <div>
                         <div class="text-[11.5px] font-semibold tracking-wide uppercase text-slate-800">Check status</div>
-                        <div class="mt-1.5 text-sm text-warn-deep">In progress</div>
+                        @if ($studentLabel)
+                            <span class="mt-1.5 inline-block text-[12.5px] font-semibold px-2 py-1 rounded-sm border {{ $studentLabel['bg'] }} {{ $studentLabel['fg'] }} {{ $studentLabel['border'] }}">
+                                {{ $studentLabel['label'] }}
+                            </span>
+                        @else
+                            <div class="mt-1.5 text-sm text-warn-deep">In progress</div>
+                        @endif
                     </div>
                 </div>
+
+                @if ($submission->notes->isNotEmpty())
+                    <div class="mt-9 pt-8 border-t border-slate-200">
+                        <div class="text-[11.5px] font-semibold tracking-wide uppercase text-slate-800">Feedback from your instructor</div>
+                        <div class="mt-3 grid gap-3 max-w-[560px]">
+                            @foreach ($submission->notes as $note)
+                                <div class="bg-slate-50 border border-slate-200 rounded-sm p-4">
+                                    <div class="text-[13px] text-ink leading-[1.6]">{{ $note->body }}</div>
+                                    <div class="mt-1.5 text-[11.5px] text-slate-700">{{ $note->author->name }} &middot; {{ $note->created_at->format('j M Y, H:i') }}</div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                @if ($previousSubmissions->isNotEmpty())
+                    <div class="mt-9 pt-8 border-t border-slate-200">
+                        <div class="text-[11.5px] font-semibold tracking-wide uppercase text-slate-800">Previous attempts</div>
+                        <div class="mt-3 grid gap-2 max-w-[560px]">
+                            @foreach ($previousSubmissions as $previous)
+                                @php
+                                    $previousReleased = $previous->isSimilarityReleased();
+                                    $previousLabel = $previousReleased
+                                        ? \App\Models\SimilarityReport::studentFacingLabel($previous->topSimilarityReport()?->status)
+                                        : null;
+                                @endphp
+                                <div class="flex items-center justify-between gap-4 text-[13px] px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-sm">
+                                    <span>Submitted {{ $previous->submitted_at?->format('j M Y, H:i') }}</span>
+                                    @if ($previousLabel)
+                                        <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded-sm border {{ $previousLabel['bg'] }} {{ $previousLabel['fg'] }} {{ $previousLabel['border'] }}">
+                                            {{ $previousLabel['label'] }}
+                                        </span>
+                                    @else
+                                        <span class="text-[11.5px] text-slate-700">In progress</span>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
 
                 <div class="mt-9 flex gap-3">
                     <a href="{{ route('assignments.submit.show', ['assignment' => $assignment, 'revise' => 1]) }}"

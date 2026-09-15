@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\Faculty;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CourseEnrollmentTest extends TestCase
@@ -245,6 +246,23 @@ class CourseEnrollmentTest extends TestCase
         $this->actingAs($admin)->delete(route('admin.courses.destroy', $course));
 
         $this->assertDatabaseMissing('assignments', ['id' => $assignment->id]);
+    }
+
+    public function test_deleting_a_course_removes_its_assignment_attachments_from_disk(): void
+    {
+        Storage::fake('local');
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $course = Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $semester->id]);
+        $path = 'assignment-attachments/existing.docx';
+        Storage::disk('local')->put($path, 'content');
+        $assignment = Assignment::factory()->create(['course_id' => $course->id, 'attachment_path' => $path]);
+
+        $this->actingAs($admin)->delete(route('admin.courses.destroy', $course));
+
+        Storage::disk('local')->assertMissing($path);
     }
 
     public function test_a_teacher_cannot_delete_a_course(): void

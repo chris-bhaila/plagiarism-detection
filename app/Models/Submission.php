@@ -19,12 +19,14 @@ class Submission extends Model
         'student_id',
         'text_content',
         'submitted_at',
+        'similarity_released_at',
     ];
 
     protected function casts(): array
     {
         return [
             'submitted_at' => 'datetime',
+            'similarity_released_at' => 'datetime',
         ];
     }
 
@@ -79,7 +81,8 @@ class Submission extends Model
 
     /**
      * Follow-up notes a teacher/admin has left on this submission, newest
-     * first. Teacher/admin-facing only — no student-visible surface yet.
+     * first. Read-only on the student side (submissions.notes.store has no
+     * student-facing route — only teacher/admin can author a note).
      *
      * @return HasMany<SubmissionNote, $this>
      */
@@ -89,5 +92,20 @@ class Submission extends Model
         // added in the same request/test can share a second-precision
         // timestamp, and id is the only reliable insertion-order tiebreak.
         return $this->hasMany(SubmissionNote::class)->latest('id');
+    }
+
+    /**
+     * The highest-scoring similarity report involving this submission, if
+     * any — same "best match drives the shown status" rule used by
+     * BuildsSubmissionRows for the teacher/admin submissions table.
+     */
+    public function topSimilarityReport(): ?SimilarityReport
+    {
+        return $this->similarityReports()->first();
+    }
+
+    public function isSimilarityReleased(): bool
+    {
+        return $this->similarity_released_at !== null;
     }
 }

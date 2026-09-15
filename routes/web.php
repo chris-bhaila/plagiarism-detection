@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminFacultyController;
 use App\Http\Controllers\AdminSemesterController;
 use App\Http\Controllers\AdminSimilarityReportController;
 use App\Http\Controllers\AdminSubmissionNoteController;
+use App\Http\Controllers\AdminSubmissionSimilarityReleaseController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AssignmentAttachmentController;
 use App\Http\Controllers\AssignmentController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SimilarityReportController;
 use App\Http\Controllers\StudentAssignmentController;
 use App\Http\Controllers\SubmissionNoteController;
+use App\Http\Controllers\SubmissionSimilarityReleaseController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
@@ -87,6 +89,9 @@ Route::middleware(['auth', 'role:'.User::ROLE_TEACHER])->group(function () {
 
     Route::post('/submissions/{submission}/notes', [SubmissionNoteController::class, 'store'])
         ->name('submissions.notes.store');
+
+    Route::patch('/submissions/{submission}/similarity-release', [SubmissionSimilarityReleaseController::class, 'update'])
+        ->name('submissions.similarity-release.update');
 
     Route::patch('/similarity-reports/bulk-status', [SimilarityReportController::class, 'bulkUpdateStatus'])
         ->name('similarity-reports.bulk-update-status');
@@ -189,6 +194,9 @@ Route::middleware(['auth', 'role:'.User::ROLE_ADMIN])->group(function () {
 
     Route::post('/admin/submissions/{submission}/notes', [AdminSubmissionNoteController::class, 'store'])
         ->name('admin.submissions.notes.store');
+
+    Route::patch('/admin/submissions/{submission}/similarity-release', [AdminSubmissionSimilarityReleaseController::class, 'update'])
+        ->name('admin.submissions.similarity-release.update');
 
     Route::patch('/admin/similarity-reports/bulk-status', [AdminSimilarityReportController::class, 'bulkUpdateStatus'])
         ->name('admin.similarity-reports.bulk-update-status');

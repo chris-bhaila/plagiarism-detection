@@ -19,13 +19,15 @@ class SimilarityReportController extends Controller
     /**
      * Detailed report view with highlighted overlaps between two submissions.
      */
-    public function show(SimilarityReport $similarityReport): View
+    public function show(Request $request, SimilarityReport $similarityReport): View
     {
         $similarityReport->load([
             'submissionA.student',
             'submissionA.assignment.course',
             'submissionB.student',
         ]);
+
+        abort_if($similarityReport->submissionA->assignment->course->teacher_id !== $request->user()->id, 403);
 
         $otherMatches = $this->counterpartMatches($similarityReport, $similarityReport->submissionA)
             ->merge($this->counterpartMatches($similarityReport, $similarityReport->submissionB))
@@ -51,6 +53,10 @@ class SimilarityReportController extends Controller
      */
     public function updateStatus(Request $request, SimilarityReport $similarityReport): RedirectResponse
     {
+        $similarityReport->loadMissing('submissionA.assignment.course');
+
+        abort_if($similarityReport->submissionA->assignment->course->teacher_id !== $request->user()->id, 403);
+
         $validated = $request->validate([
             'status' => ['required', 'in:pending,reviewed,dismissed,confirmed'],
         ]);
