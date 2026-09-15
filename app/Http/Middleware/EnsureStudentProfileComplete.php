@@ -7,10 +7,9 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * A student who hasn't picked a faculty/semester (e.g. an account created
- * before these fields existed) gets redirected to fill them in before
- * doing anything else — needed so they show up correctly for teachers
- * searching students to enroll.
+ * A student who hasn't picked a semester (e.g. an account created before
+ * this field existed) gets redirected to fill it in before doing anything
+ * else — needed so they're auto-enrolled into the right courses.
  */
 class EnsureStudentProfileComplete
 {
@@ -20,7 +19,7 @@ class EnsureStudentProfileComplete
 
         $needsProfile = $user
             && $user->isStudent()
-            && (! $user->faculty || ! $user->semester);
+            && ! $user->semester_id;
 
         $exempt = $request->routeIs('profile.complete', 'profile.complete.store', 'logout');
 

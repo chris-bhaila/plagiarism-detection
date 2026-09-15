@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="max-w-[1360px] mx-auto px-8 pt-10 pb-20">
+    <div class="pt-10 pb-20">
 
         <div class="flex items-end justify-between gap-6 flex-wrap">
             <div>

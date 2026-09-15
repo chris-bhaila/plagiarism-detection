@@ -5,7 +5,7 @@
 @endphp
 
 <x-app-layout>
-    <div class="max-w-[1360px] mx-auto px-8 pt-8 pb-20">
+    <div class="pt-8 pb-20">
 
         @if (session('status'))
             <div class="mb-5 text-sm text-ok-deep bg-ok-bg border border-ok-border rounded-sm px-4 py-2.5">
@@ -63,6 +63,30 @@
                             </div>
                             <div class="p-5 text-sm leading-[1.75] text-ink">
                                 {!! $report->highlight($submission->text_content) !!}
+                            </div>
+
+                            <div x-data="{ notesOpen: false }" class="border-t border-slate-200 px-5 py-3.5">
+                                <button @click="notesOpen = !notesOpen" type="button" class="text-[12.5px] font-semibold text-navy hover:underline">
+                                    <span x-text="notesOpen ? 'Hide notes' : 'Notes{{ $submission->notes->count() ? ' ('.$submission->notes->count().')' : '' }} for {{ $submission->student->name }}'"></span>
+                                </button>
+
+                                <div x-show="notesOpen" x-cloak class="mt-3">
+                                    @forelse ($submission->notes as $note)
+                                        <div class="pb-3 mb-3 border-b border-slate-200 last:border-b-0 last:pb-0 last:mb-0">
+                                            <div class="text-[13px] text-ink leading-[1.6]">{{ $note->body }}</div>
+                                            <div class="mt-1 text-[11.5px] text-slate-700">{{ $note->author->name }} &middot; {{ $note->created_at->format('j M Y, H:i') }}</div>
+                                        </div>
+                                    @empty
+                                        <p class="text-[12.5px] text-slate-700">No notes yet.</p>
+                                    @endforelse
+
+                                    <form method="POST" action="{{ route('submissions.notes.store', $submission) }}" class="mt-3 flex items-start gap-2">
+                                        @csrf
+                                        <textarea name="body" rows="2" placeholder="Add a follow-up note for {{ $submission->student->name }}…" required
+                                            class="flex-1 box-border bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13px] text-ink focus:border-navy-light focus:outline-none"></textarea>
+                                        <x-primary-button class="py-2">Add</x-primary-button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     @endforeach

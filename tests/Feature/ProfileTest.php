@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Faculty;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -12,7 +13,7 @@ class ProfileTest extends TestCase
 
     public function test_profile_page_is_displayed(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => User::ROLE_TEACHER]);
 
         $response = $this
             ->actingAs($user)
@@ -23,10 +24,11 @@ class ProfileTest extends TestCase
 
     public function test_profile_page_shows_a_students_faculty_and_semester(): void
     {
+        $semester = Faculty::factory()->withSemesters()->create(['name' => 'BIM'])->semesters()->where('number', 5)->first();
+
         $student = User::factory()->create([
             'role' => User::ROLE_STUDENT,
-            'faculty' => 'BIM',
-            'semester' => 5,
+            'semester_id' => $semester->id,
         ]);
 
         $response = $this->actingAs($student)->get('/profile');
@@ -38,25 +40,25 @@ class ProfileTest extends TestCase
 
     public function test_faculty_and_semester_cannot_be_changed_via_the_profile_form(): void
     {
+        $semester = Faculty::factory()->withSemesters()->create(['name' => 'BCA'])->semesters()->where('number', 1)->first();
+        $otherSemester = Faculty::factory()->withSemesters()->create(['name' => 'BBM'])->semesters()->where('number', 7)->first();
+
         $student = User::factory()->create([
             'role' => User::ROLE_STUDENT,
-            'faculty' => 'BCA',
-            'semester' => 1,
+            'semester_id' => $semester->id,
         ]);
 
         $response = $this->actingAs($student)->patch('/profile', [
             'name' => $student->name,
             'email' => $student->email,
-            'faculty' => 'BBM',
-            'semester' => 7,
+            'semester_id' => $otherSemester->id,
         ]);
 
         $response->assertSessionHasNoErrors()->assertRedirect('/profile');
 
-        // The submitted faculty/semester are silently ignored, not applied.
+        // The submitted semester_id is silently ignored, not applied.
         $student->refresh();
-        $this->assertSame('BCA', $student->faculty);
-        $this->assertSame(1, $student->semester);
+        $this->assertSame($semester->id, $student->semester_id);
     }
 
     public function test_profile_information_can_be_updated(): void

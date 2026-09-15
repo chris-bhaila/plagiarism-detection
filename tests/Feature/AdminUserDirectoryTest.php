@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Course;
+use App\Models\Faculty;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -39,11 +40,17 @@ class AdminUserDirectoryTest extends TestCase
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
-        User::factory()->create(['role' => User::ROLE_STUDENT, 'name' => 'Match Student', 'faculty' => 'BCA', 'semester' => 4]);
-        User::factory()->create(['role' => User::ROLE_STUDENT, 'name' => 'Wrong Faculty', 'faculty' => 'BIM', 'semester' => 4]);
-        User::factory()->create(['role' => User::ROLE_STUDENT, 'name' => 'Wrong Semester', 'faculty' => 'BCA', 'semester' => 2]);
+        $bca = Faculty::factory()->withSemesters()->create(['name' => 'BCA']);
+        $bim = Faculty::factory()->withSemesters()->create(['name' => 'BIM']);
+        $bcaSem4 = $bca->semesters()->where('number', 4)->first();
+        $bcaSem2 = $bca->semesters()->where('number', 2)->first();
+        $bimSem4 = $bim->semesters()->where('number', 4)->first();
 
-        $response = $this->actingAs($admin)->get(route('admin.students', ['faculty' => 'BCA', 'semester' => 4]));
+        User::factory()->create(['role' => User::ROLE_STUDENT, 'name' => 'Match Student', 'semester_id' => $bcaSem4->id]);
+        User::factory()->create(['role' => User::ROLE_STUDENT, 'name' => 'Wrong Faculty', 'semester_id' => $bimSem4->id]);
+        User::factory()->create(['role' => User::ROLE_STUDENT, 'name' => 'Wrong Semester', 'semester_id' => $bcaSem2->id]);
+
+        $response = $this->actingAs($admin)->get(route('admin.students', ['faculty_id' => $bca->id, 'semester_id' => $bcaSem4->id]));
 
         $response->assertOk();
         $response->assertSeeText('Match Student');
@@ -55,10 +62,10 @@ class AdminUserDirectoryTest extends TestCase
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
-        $course = Course::factory()->create(['teacher_id' => $teacher->id]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $semester->id]);
 
-        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'name' => 'Enrolled Student']);
-        $course->students()->attach($student->id);
+        User::factory()->create(['role' => User::ROLE_STUDENT, 'name' => 'Enrolled Student', 'semester_id' => $semester->id]);
 
         $response = $this->actingAs($admin)->get(route('admin.students'));
 
@@ -77,10 +84,24 @@ class AdminUserDirectoryTest extends TestCase
         $response->assertDontSeeText('Some Teacher');
     }
 
+    public function test_admin_can_search_teachers_by_name_or_email(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        User::factory()->create(['role' => User::ROLE_TEACHER, 'name' => 'Taylor Teacher', 'email' => 'taylor@example.com']);
+        User::factory()->create(['role' => User::ROLE_TEACHER, 'name' => 'Jordan Instructor', 'email' => 'jordan@example.com']);
+
+        $response = $this->actingAs($admin)->get(route('admin.teachers', ['search' => 'Taylor']));
+
+        $response->assertOk();
+        $response->assertSeeText('Taylor Teacher');
+        $response->assertDontSeeText('Jordan Instructor');
+    }
+
     public function test_non_admins_cannot_view_the_admin_directories(): void
     {
         $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
-        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'faculty' => 'BCA', 'semester' => 1]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $semester->id]);
 
         $this->actingAs($teacher)->get(route('admin.teachers'))->assertForbidden();
         $this->actingAs($teacher)->get(route('admin.students'))->assertForbidden();

@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="max-w-[1360px] mx-auto px-8 pt-10 pb-20" x-data="{ creating: {{ $errors->any() ? 'true' : 'false' }} }">
+    <div class="pt-10 pb-20">
 
         @if (session('status'))
             <div class="mb-6 text-sm text-ok-deep bg-ok-bg border border-ok-border rounded-sm px-4 py-2.5">
@@ -8,36 +8,28 @@
         @endif
 
         <div class="flex items-end justify-between gap-6 flex-wrap">
-            <h1 class="text-[28px] font-semibold tracking-tight">My Courses</h1>
-            <button @click="creating = !creating" type="button"
-                class="text-[12.5px] font-semibold px-3.5 py-1.5 rounded-sm border border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light">
-                <span x-text="creating ? 'Cancel' : '+ New course'"></span>
+            <div>
+                <h1 class="text-[28px] font-semibold tracking-tight">My Courses</h1>
+                <p class="mt-1 text-[13px] text-slate-900">Courses are created and assigned by an administrator.</p>
+            </div>
+        </div>
+
+        <form method="GET" action="{{ route('courses.index') }}" class="mt-7 flex flex-wrap gap-2.5">
+            <input type="text" name="search" value="{{ $search }}" placeholder="Name or code"
+                class="flex-1 min-w-[200px] max-w-[320px] bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13.5px] text-ink focus:border-navy-light focus:outline-none">
+
+            <button type="submit" class="bg-navy hover:bg-navy-light border border-navy rounded-sm text-white text-[13.5px] font-semibold px-4 py-2">
+                Search
             </button>
-        </div>
 
-        <div x-show="creating" x-cloak x-transition class="mt-6 bg-white border border-slate-300 rounded-sm p-6">
-            <form method="POST" action="{{ route('courses.store') }}" class="flex flex-wrap items-end gap-4">
-                @csrf
+            @if ($search)
+                <a href="{{ route('courses.index') }}" class="text-[13px] font-medium text-slate-800 hover:text-ink self-center">
+                    Clear
+                </a>
+            @endif
+        </form>
 
-                <div class="flex-1 min-w-[200px]">
-                    <x-input-label for="name" value="Course name" />
-                    <x-text-input id="name" type="text" name="name" :value="old('name')" placeholder="Introduction to Computer Science" required autofocus />
-                    <x-input-error :messages="$errors->get('name')" class="mt-1.5" />
-                </div>
-
-                <div class="w-[160px]">
-                    <x-input-label for="code" value="Course code" />
-                    <x-text-input id="code" type="text" name="code" :value="old('code')" placeholder="CS101" required />
-                    <x-input-error :messages="$errors->get('code')" class="mt-1.5" />
-                </div>
-
-                <x-primary-button class="py-2.5">
-                    Create course
-                </x-primary-button>
-            </form>
-        </div>
-
-        <div class="mt-7 bg-white border border-slate-300 rounded-sm">
+        <div class="mt-5 bg-white border border-slate-300 rounded-sm">
             @forelse ($courses as $course)
                 <a href="{{ route('courses.show', $course) }}"
                    class="flex items-center justify-between gap-6 px-6 py-4 border-b border-slate-200 last:border-b-0 hover:bg-slate-50">
@@ -52,7 +44,9 @@
                     </span>
                 </a>
             @empty
-                <p class="px-6 py-10 text-center text-sm text-slate-800">No courses yet — create your first one above.</p>
+                <p class="px-6 py-10 text-center text-sm text-slate-800">
+                    {{ $search ? 'No courses match this search.' : 'No courses assigned to you yet.' }}
+                </p>
             @endforelse
         </div>
     </div>

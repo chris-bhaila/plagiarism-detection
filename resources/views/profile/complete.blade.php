@@ -27,31 +27,43 @@
                     <h1 class="text-[20px] font-semibold tracking-tight">One more step</h1>
                     <p class="mt-1.5 text-[13.5px] text-slate-900">Tell us your faculty and semester so your teachers can find you when enrolling students.</p>
 
-                    <form method="POST" action="{{ route('profile.complete.store') }}" class="mt-7 grid gap-5">
+                    <form method="POST" action="{{ route('profile.complete.store') }}" class="mt-7 grid gap-5" x-data="{
+                            faculties: @js($faculties->map(fn ($f) => ['id' => $f->id, 'name' => $f->name, 'semesters' => $f->semesters->map(fn ($s) => ['id' => $s->id, 'number' => $s->number])])),
+                            facultyId: null,
+                            semesterId: {{ old('semester_id') ? (int) old('semester_id') : 'null' }},
+                            get semesters() {
+                                const faculty = this.faculties.find(f => f.id === this.facultyId);
+                                return faculty ? faculty.semesters : [];
+                            },
+                        }" x-init="
+                            if (semesterId) {
+                                const f = faculties.find(f => f.semesters.some(s => s.id === semesterId));
+                                if (f) facultyId = f.id;
+                            }
+                        ">
                         @csrf
 
                         <div>
-                            <x-input-label for="faculty" value="Faculty" />
-                            <select id="faculty" name="faculty" required
+                            <x-input-label for="faculty_id" value="Faculty" />
+                            <select id="faculty_id" x-model.number="facultyId" @change="semesterId = null" required
                                 class="w-full box-border bg-white border border-slate-500 rounded-sm px-3.5 py-2.5 text-[14.5px] text-ink focus:border-navy-light focus:outline-none">
-                                <option value="" disabled @selected(old('faculty') === null)>Select faculty</option>
-                                @foreach ($faculties as $faculty)
-                                    <option value="{{ $faculty }}" @selected(old('faculty') === $faculty)>{{ $faculty }}</option>
-                                @endforeach
+                                <option value="" disabled>Select faculty</option>
+                                <template x-for="faculty in faculties" :key="faculty.id">
+                                    <option :value="faculty.id" x-text="faculty.name"></option>
+                                </template>
                             </select>
-                            <x-input-error :messages="$errors->get('faculty')" class="mt-1.5" />
                         </div>
 
                         <div>
-                            <x-input-label for="semester" value="Semester" />
-                            <select id="semester" name="semester" required
+                            <x-input-label for="semester_id" value="Semester" />
+                            <select id="semester_id" name="semester_id" x-model.number="semesterId" required
                                 class="w-full box-border bg-white border border-slate-500 rounded-sm px-3.5 py-2.5 text-[14.5px] text-ink focus:border-navy-light focus:outline-none">
-                                <option value="" disabled @selected(old('semester') === null)>Select semester</option>
-                                @for ($s = 1; $s <= 8; $s++)
-                                    <option value="{{ $s }}" @selected((int) old('semester') === $s)>Semester {{ $s }}</option>
-                                @endfor
+                                <option value="" disabled>Select semester</option>
+                                <template x-for="semester in semesters" :key="semester.id">
+                                    <option :value="semester.id" x-text="'Semester ' + semester.number"></option>
+                                </template>
                             </select>
-                            <x-input-error :messages="$errors->get('semester')" class="mt-1.5" />
+                            <x-input-error :messages="$errors->get('semester_id')" class="mt-1.5" />
                         </div>
 
                         <x-primary-button class="w-full py-3 text-[14.5px]">

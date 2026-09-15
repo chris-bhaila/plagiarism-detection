@@ -12,18 +12,29 @@ class DashboardController extends Controller
 {
     /**
      * Analytics dashboard: most-flagged students, average scores per
-     * assignment, lexical vs semantic flag breakdown.
+     * assignment, lexical vs semantic flag breakdown. Scoped to the
+     * logged-in teacher's own courses; admins see the whole institution.
      */
     public function index(): View
     {
-        $reports = SimilarityReport::with(['submissionA.assignment.course', 'submissionB.assignment'])->get();
+        $courseIds = $this->scopedCourseIds();
+
+        $reports = SimilarityReport::with(['submissionA.assignment.course', 'submissionB.assignment'])
+            ->when($courseIds !== null, fn ($query) => $query->whereHas(
+                'submissionA.assignment', fn ($query) => $query->whereIn('course_id', $courseIds)
+            ))
+            ->get();
 
         $flagged = $reports->filter(
             fn (SimilarityReport $r) => $r->combined_score >= ($r->submissionA->assignment->similarity_threshold ?? 0.35)
         );
 
-        $totalSubmissions = Submission::count();
-        $totalAssignments = Assignment::count();
+        $totalSubmissions = Submission::when($courseIds !== null, fn ($query) => $query->whereHas(
+            'assignment', fn ($query) => $query->whereIn('course_id', $courseIds)
+        ))->count();
+
+        $totalAssignments = Assignment::when($courseIds !== null, fn ($query) => $query->whereIn('course_id', $courseIds))->count();
+
         $flaggedCount = $flagged->count();
         $pendingCount = $reports->where('status', SimilarityReport::STATUS_PENDING)->count();
         $confirmedCount = $reports->where('status', SimilarityReport::STATUS_CONFIRMED)->count();
@@ -34,7 +45,7 @@ class DashboardController extends Controller
         $avgCombined = $reports->avg('combined_score') ?? 0;
 
         $bars = $this->flagBreakdownByCourse($flagged);
-        $topAssignments = $this->mostFlaggedAssignments();
+        $topAssignments = $this->mostFlaggedAssignments($courseIds);
 
         return view('dashboard.index', [
             'totalSubmissions' => $totalSubmissions,
@@ -83,13 +94,28 @@ class DashboardController extends Controller
     }
 
     /**
+     * The logged-in user's own course IDs to scope the dashboard to, or
+     * null for "no scoping" (admins see every course in the system).
+     *
+     * @return ?array<int, int>
+     */
+    protected function scopedCourseIds(): ?array
+    {
+        $user = auth()->user();
+
+        return $user->isTeacher() ? $user->coursesTaught()->pluck('id')->all() : null;
+    }
+
+    /**
      * Assignments with the highest flag rate, most-flagged first.
      *
+     * @param  ?array<int, int>  $courseIds
      * @return Collection<int, object>
      */
-    protected function mostFlaggedAssignments(): Collection
+    protected function mostFlaggedAssignments(?array $courseIds): Collection
     {
         return Assignment::with('course')
+            ->when($courseIds !== null, fn ($query) => $query->whereIn('course_id', $courseIds))
             ->get()
             ->map(function (Assignment $assignment) {
                 $subs = $assignment->submissions()->count();

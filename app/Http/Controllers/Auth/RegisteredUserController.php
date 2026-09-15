@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Faculty;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -21,7 +22,9 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
-        return view('auth.register');
+        return view('auth.register', [
+            'faculties' => Faculty::with('semesters')->orderBy('name')->get(),
+        ]);
     }
 
     /**
@@ -37,8 +40,7 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'faculty' => ['required', 'string', Rule::in(User::FACULTIES)],
-            'semester' => ['required', 'integer', 'between:1,8'],
+            'semester_id' => ['required', Rule::exists('semesters', 'id')],
         ]);
 
         $user = User::create([
@@ -46,8 +48,7 @@ class RegisteredUserController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => User::ROLE_STUDENT,
-            'faculty' => $validated['faculty'],
-            'semester' => $validated['semester'],
+            'semester_id' => $validated['semester_id'],
         ]);
 
         event(new Registered($user));

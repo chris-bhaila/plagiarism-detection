@@ -42,6 +42,9 @@
                 <x-nav-tab :href="route('admin.students')" :active="request()->routeIs('admin.students')">
                     Students
                 </x-nav-tab>
+                <x-nav-tab :href="route('admin.faculties.index')" :active="request()->routeIs('admin.faculties.*')">
+                    Faculties
+                </x-nav-tab>
             @endif
         </div>
 
@@ -100,6 +103,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.students')" :active="request()->routeIs('admin.students')">
                     Students
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.faculties.index')" :active="request()->routeIs('admin.faculties.*')">
+                    Faculties
                 </x-responsive-nav-link>
             @endif
         </div>

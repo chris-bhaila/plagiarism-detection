@@ -76,4 +76,18 @@ class Submission extends Model
             ->sortByDesc('combined_score')
             ->values();
     }
+
+    /**
+     * Follow-up notes a teacher/admin has left on this submission, newest
+     * first. Teacher/admin-facing only — no student-visible surface yet.
+     *
+     * @return HasMany<SubmissionNote, $this>
+     */
+    public function notes(): HasMany
+    {
+        // ->latest('id') rather than the default created_at: two notes
+        // added in the same request/test can share a second-precision
+        // timestamp, and id is the only reliable insertion-order tiebreak.
+        return $this->hasMany(SubmissionNote::class)->latest('id');
+    }
 }

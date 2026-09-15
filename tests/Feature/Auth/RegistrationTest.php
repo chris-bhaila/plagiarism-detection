@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Faculty;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -19,37 +20,36 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register(): void
     {
+        $semester = Faculty::factory()->withSemesters()->create(['name' => 'BCA'])->semesters()->where('number', 3)->first();
+
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
-            'faculty' => 'BCA',
-            'semester' => 3,
+            'semester_id' => $semester->id,
         ]);
 
         $this->assertAuthenticated();
 
         $user = User::where('email', 'test@example.com')->firstOrFail();
         $this->assertSame(User::ROLE_STUDENT, $user->role);
-        $this->assertSame('BCA', $user->faculty);
-        $this->assertSame(3, $user->semester);
+        $this->assertSame($semester->id, $user->semester_id);
 
         $response->assertRedirect(route($user->homeRouteName(), absolute: false));
     }
 
-    public function test_registration_requires_a_valid_faculty_and_semester(): void
+    public function test_registration_requires_a_valid_semester(): void
     {
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test2@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
-            'faculty' => 'NOT_A_REAL_FACULTY',
-            'semester' => 9,
+            'semester_id' => 99999,
         ]);
 
-        $response->assertSessionHasErrors(['faculty', 'semester']);
+        $response->assertSessionHasErrors(['semester_id']);
         $this->assertGuest();
     }
 }

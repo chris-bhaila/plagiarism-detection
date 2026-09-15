@@ -3,101 +3,82 @@
 namespace App\Http\Controllers;
 
 use App\Models\Course;
+use App\Models\Submission;
 use App\Models\User;
+use App\Repositories\Contracts\AssignmentRepositoryInterface;
 use App\Repositories\Contracts\CourseRepositoryInterface;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class CourseController extends Controller
 {
     public function __construct(
         protected CourseRepositoryInterface $courses,
+        protected AssignmentRepositoryInterface $assignments,
     ) {}
 
     /**
-     * List courses managed by the authenticated teacher.
+     * List courses managed by the authenticated teacher, filterable by
+     * name/code search text.
      */
     public function index(Request $request): View
     {
-        $courses = $this->courses->forTeacher($request->user());
+        $search = $request->query('search');
+        $courses = $this->courses->forTeacher($request->user(), $search);
 
-        return view('teacher.courses.index', compact('courses'));
+        return view('teacher.courses.index', [
+            'courses' => $courses,
+            'search' => $search,
+        ]);
     }
 
     /**
-     * Create a new course owned by the authenticated teacher.
-     */
-    public function store(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'code' => [
-                'required', 'string', 'max:50',
-                Rule::unique('courses')->where('teacher_id', $request->user()->id),
-            ],
-        ]);
-
-        $course = $this->courses->create([
-            ...$validated,
-            'teacher_id' => $request->user()->id,
-        ]);
-
-        return redirect()->route('courses.show', $course)
-            ->with('status', 'Course created. Add students below.');
-    }
-
-    /**
-     * Course detail: roster of enrolled students, plus a filterable search
-     * to enroll more.
+     * Course detail: roster of students auto-enrolled via shared semester,
+     * plus the course's assignments (create/edit/delete/review, all
+     * inline here) — combined on one page, same as the admin equivalent.
      */
     public function show(Request $request, Course $course): View
     {
         $this->authorizeTeacherOwnsCourse($request, $course);
 
-        $filters = [
-            'search' => $request->query('search'),
-            'faculty' => $request->query('faculty'),
-            'semester' => $request->filled('semester') ? (int) $request->query('semester') : null,
-        ];
-
-        $hasSearched = collect($filters)->filter()->isNotEmpty();
-
-        $candidates = $hasSearched
-            ? $this->courses->searchAvailableStudents($course, $filters)
-            : collect();
-
         $roster = $course->students()->orderBy('name')->get();
+        $assignments = $this->assignments->forCourse($course);
 
         return view('teacher.courses.show', [
             'course' => $course,
             'roster' => $roster,
-            'candidates' => $candidates,
-            'hasSearched' => $hasSearched,
-            'filters' => $filters,
-            'faculties' => User::FACULTIES,
+            'assignments' => $assignments,
         ]);
     }
 
     /**
-     * Enroll the selected students in the course.
+     * One student's status within this course: every assignment, and
+     * their submission (if any) with its similarity review status.
      */
-    public function enroll(Request $request, Course $course): RedirectResponse
+    public function showStudent(Request $request, Course $course, User $student): View
     {
         $this->authorizeTeacherOwnsCourse($request, $course);
 
-        $validated = $request->validate([
-            'student_ids' => ['required', 'array', 'min:1'],
-            'student_ids.*' => ['integer', 'exists:users,id'],
+        abort_unless($student->isStudent() && $student->semester_id === $course->semester_id, 404);
+
+        $assignments = $course->assignments()->orderByDesc('due_date')->get()
+            ->map(function ($assignment) use ($student) {
+                $submission = Submission::where('assignment_id', $assignment->id)
+                    ->where('student_id', $student->id)
+                    ->first();
+
+                return (object) [
+                    'assignment' => $assignment,
+                    'submission' => $submission,
+                    'topReport' => $submission?->similarityReports()->first(),
+                ];
+            });
+
+        return view('teacher.courses.student', [
+            'course' => $course,
+            'student' => $student,
+            'assignments' => $assignments,
         ]);
-
-        $this->courses->enrollStudents($course, $validated['student_ids']);
-
-        $count = count($validated['student_ids']);
-
-        return redirect()->route('courses.show', $course)
-            ->with('status', $count === 1 ? '1 student enrolled.' : "{$count} students enrolled.");
     }
 
     protected function authorizeTeacherOwnsCourse(Request $request, Course $course): void

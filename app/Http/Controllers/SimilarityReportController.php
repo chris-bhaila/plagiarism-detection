@@ -7,6 +7,7 @@ use App\Models\Submission;
 use App\Repositories\Contracts\SimilarityReportRepositoryInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class SimilarityReportController extends Controller
@@ -58,6 +59,35 @@ class SimilarityReportController extends Controller
 
         return redirect()->route('similarity-reports.show', $similarityReport)
             ->with('status', 'Report marked as '.$validated['status'].'.');
+    }
+
+    /**
+     * Apply one status to several reports at once — e.g. dismiss a batch
+     * of low-signal matches without opening each one individually. Only
+     * reports belonging to the requesting teacher's own courses.
+     */
+    public function bulkUpdateStatus(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'report_ids' => ['required', 'array', 'min:1'],
+            'report_ids.*' => ['integer', 'exists:similarity_reports,id'],
+            'status' => ['required', 'in:pending,reviewed,dismissed,confirmed'],
+        ]);
+
+        $reports = SimilarityReport::with('submissionA.assignment.course')
+            ->whereIn('id', $validated['report_ids'])
+            ->get();
+
+        foreach ($reports as $report) {
+            abort_if($report->submissionA->assignment->course->teacher_id !== $request->user()->id, 403);
+        }
+
+        SimilarityReport::whereIn('id', $validated['report_ids'])->update(['status' => $validated['status']]);
+
+        $count = count($validated['report_ids']);
+
+        return redirect()->back()
+            ->with('status', "{$count} ".Str::plural('report', $count)." marked as {$validated['status']}.");
     }
 
     /**

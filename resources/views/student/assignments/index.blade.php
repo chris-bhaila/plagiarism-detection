@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="max-w-[1360px] mx-auto px-8 pt-10 pb-20">
+    <div class="pt-10 pb-20">
         <h1 class="text-[28px] font-semibold tracking-tight">My Assignments</h1>
 
         <div class="mt-7 bg-white border border-slate-300 rounded-sm">

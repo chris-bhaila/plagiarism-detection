@@ -8,20 +8,26 @@ use Illuminate\Database\Eloquent\Collection;
 interface UserRepositoryInterface
 {
     /**
-     * All teacher accounts, with a courses-taught count preloaded.
+     * All teacher accounts, optionally filtered by name/email search text,
+     * with a courses-taught count preloaded.
      *
      * @return Collection<int, User>
      */
-    public function teachers(): Collection;
+    public function teachers(?string $search = null): Collection;
 
     /**
      * All student accounts, optionally filtered by faculty and/or semester
      * (combined with AND), with an enrolled-courses count preloaded.
      *
-     * @param  array{faculty?: ?string, semester?: ?int}  $filters
+     * @param  array{faculty_id?: ?int, semester_id?: ?int}  $filters
      * @return Collection<int, User>
      */
     public function students(array $filters): Collection;
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function create(array $data): User;
 
     /**
      * @param  array<string, mixed>  $data

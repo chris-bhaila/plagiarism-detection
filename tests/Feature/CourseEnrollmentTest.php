@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Assignment;
 use App\Models\Course;
+use App\Models\Faculty;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -11,162 +13,203 @@ class CourseEnrollmentTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_teacher_can_create_a_course(): void
+    public function test_teacher_can_search_their_own_courses_by_name_or_code(): void
     {
         $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $semester->id, 'name' => 'Data Structures', 'code' => 'CS201']);
+        Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $semester->id, 'name' => 'Operating Systems', 'code' => 'CS301']);
 
-        $response = $this->actingAs($teacher)->post(route('courses.store'), [
+        $response = $this->actingAs($teacher)->get(route('courses.index', ['search' => 'Data']));
+
+        $response->assertOk();
+        $response->assertSeeText('Data Structures');
+        $response->assertDontSeeText('Operating Systems');
+    }
+
+    public function test_teacher_course_search_does_not_leak_other_teachers_courses(): void
+    {
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $otherTeacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        Course::factory()->create(['teacher_id' => $otherTeacher->id, 'semester_id' => $semester->id, 'name' => 'Data Mining', 'code' => 'CS401']);
+
+        $response = $this->actingAs($teacher)->get(route('courses.index', ['search' => 'Data']));
+
+        $response->assertOk();
+        $response->assertDontSeeText('Data Mining');
+    }
+
+    public function test_admin_can_create_a_course(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+
+        $response = $this->actingAs($admin)->post(route('admin.courses.store'), [
             'name' => 'Data Structures',
             'code' => 'CS201',
+            'semester_id' => $semester->id,
+            'teacher_id' => $teacher->id,
         ]);
 
         $course = Course::where('code', 'CS201')->firstOrFail();
 
-        $response->assertRedirect(route('courses.show', $course));
+        $response->assertRedirect(route('admin.semesters.show', $semester));
         $this->assertSame($teacher->id, $course->teacher_id);
-        $this->assertSame('Data Structures', $course->name);
+        $this->assertSame($semester->id, $course->semester_id);
     }
 
-    public function test_course_creation_requires_name_and_code(): void
+    public function test_course_codes_must_be_unique(): void
     {
-        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $semesterOne = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $semesterTwo = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        Course::factory()->create(['semester_id' => $semesterOne->id, 'code' => 'CS201']);
 
-        $response = $this->actingAs($teacher)->post(route('courses.store'), []);
-
-        $response->assertSessionHasErrors(['name', 'code']);
-        $this->assertDatabaseCount('courses', 0);
-    }
-
-    public function test_a_teacher_cannot_reuse_their_own_course_code(): void
-    {
-        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
-        Course::factory()->create(['teacher_id' => $teacher->id, 'code' => 'CS101']);
-
-        $response = $this->actingAs($teacher)->post(route('courses.store'), [
-            'name' => 'Another Course',
-            'code' => 'CS101',
+        $response = $this->actingAs($admin)->post(route('admin.courses.store'), [
+            'name' => 'Data Structures Redux',
+            'code' => 'CS201',
+            'semester_id' => $semesterTwo->id,
         ]);
 
         $response->assertSessionHasErrors(['code']);
-        $this->assertDatabaseCount('courses', 1);
+        $this->assertSame(1, Course::where('code', 'CS201')->count());
     }
 
-    public function test_search_filters_combine_with_and_logic(): void
+    public function test_updating_a_course_to_another_courses_code_fails(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        Course::factory()->create(['semester_id' => $semester->id, 'code' => 'CS101']);
+        $course = Course::factory()->create(['semester_id' => $semester->id, 'code' => 'CS201']);
+
+        $response = $this->actingAs($admin)->patch(route('admin.courses.update', $course), [
+            'name' => $course->name,
+            'code' => 'CS101',
+            'semester_id' => $semester->id,
+        ]);
+
+        $response->assertSessionHasErrors(['code']);
+        $this->assertSame('CS201', $course->fresh()->code);
+    }
+
+    public function test_updating_a_course_while_keeping_its_own_code_succeeds(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $course = Course::factory()->create(['semester_id' => $semester->id, 'code' => 'CS201', 'name' => 'Old Name']);
+
+        $response = $this->actingAs($admin)->patch(route('admin.courses.update', $course), [
+            'name' => 'New Name',
+            'code' => 'CS201',
+            'semester_id' => $semester->id,
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertSame('New Name', $course->fresh()->name);
+    }
+
+    public function test_admin_can_create_a_course_without_a_teacher(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+
+        $response = $this->actingAs($admin)->post(route('admin.courses.store'), [
+            'name' => 'Data Structures',
+            'code' => 'CS201',
+            'semester_id' => $semester->id,
+        ]);
+
+        $course = Course::where('code', 'CS201')->firstOrFail();
+
+        $response->assertRedirect(route('admin.semesters.show', $semester));
+        $this->assertNull($course->teacher_id);
+    }
+
+    public function test_admin_can_assign_a_teacher_to_an_unassigned_course_via_edit(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $course = Course::factory()->create(['teacher_id' => null, 'semester_id' => $semester->id]);
+
+        $response = $this->actingAs($admin)->patch(route('admin.courses.update', $course), [
+            'name' => $course->name,
+            'code' => $course->code,
+            'semester_id' => $semester->id,
+            'teacher_id' => $teacher->id,
+        ]);
+
+        $response->assertRedirect(route('admin.semesters.show', $semester));
+        $this->assertSame($teacher->id, $course->fresh()->teacher_id);
+    }
+
+    public function test_course_creation_requires_name_code_and_semester(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $response = $this->actingAs($admin)->post(route('admin.courses.store'), []);
+
+        $response->assertSessionHasErrors(['name', 'code', 'semester_id']);
+        $this->assertDatabaseCount('courses', 0);
+    }
+
+    public function test_a_teacher_cannot_create_a_course(): void
     {
         $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
-        $course = Course::factory()->create(['teacher_id' => $teacher->id]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
 
-        $match = User::factory()->create([
-            'role' => User::ROLE_STUDENT,
-            'name' => 'Priya Sharma',
-            'faculty' => 'BCA',
-            'semester' => 4,
-        ]);
-
-        // Same name pattern but wrong faculty.
-        User::factory()->create([
-            'role' => User::ROLE_STUDENT,
-            'name' => 'Priya Gurung',
-            'faculty' => 'BIM',
-            'semester' => 4,
-        ]);
-
-        // Same faculty and semester but wrong name.
-        User::factory()->create([
-            'role' => User::ROLE_STUDENT,
-            'name' => 'Anish Rai',
-            'faculty' => 'BCA',
-            'semester' => 4,
-        ]);
-
-        $response = $this->actingAs($teacher)->get(
-            route('courses.show', $course).'?search=Priya&faculty=BCA&semester=4',
-        );
-
-        $response->assertOk();
-        $response->assertSeeText('Priya Sharma');
-        $response->assertDontSeeText('Priya Gurung');
-        $response->assertDontSeeText('Anish Rai');
+        $this->actingAs($teacher)->post(route('admin.courses.store'), [
+            'name' => 'Data Structures',
+            'code' => 'CS201',
+            'semester_id' => $semester->id,
+            'teacher_id' => $teacher->id,
+        ])->assertForbidden();
     }
 
-    public function test_already_enrolled_students_are_excluded_from_search(): void
+    public function test_students_sharing_a_courses_semester_are_automatically_enrolled(): void
     {
         $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
-        $course = Course::factory()->create(['teacher_id' => $teacher->id]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $otherSemester = Faculty::factory()->withSemesters()->create()->semesters()->first();
 
-        $enrolled = User::factory()->create([
-            'role' => User::ROLE_STUDENT,
-            'name' => 'Already Enrolled',
-            'faculty' => 'BCA',
-            'semester' => 4,
-        ]);
+        $course = Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $semester->id]);
 
-        $course->students()->attach($enrolled->id);
+        $inSemester = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $semester->id]);
+        User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $otherSemester->id]);
 
-        $response = $this->actingAs($teacher)->get(
-            route('courses.show', $course).'?faculty=BCA&semester=4',
-        );
-
-        $response->assertOk();
-        // The student legitimately shows up in the roster (they're
-        // enrolled) — what matters is they're excluded from candidates.
-        $response->assertDontSee('name="student_ids[]" value="'.$enrolled->id.'"', false);
-        $response->assertSeeText('No matching students found');
+        $this->assertSame(1, $course->students()->count());
+        $this->assertTrue($course->students()->get()->contains($inSemester));
     }
 
-    public function test_teacher_can_enroll_multiple_selected_students(): void
-    {
-        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
-        $course = Course::factory()->create(['teacher_id' => $teacher->id]);
-
-        $studentA = User::factory()->create(['role' => User::ROLE_STUDENT]);
-        $studentB = User::factory()->create(['role' => User::ROLE_STUDENT]);
-
-        $response = $this->actingAs($teacher)->post(route('courses.enroll', $course), [
-            'student_ids' => [$studentA->id, $studentB->id],
-        ]);
-
-        $response->assertRedirect(route('courses.show', $course));
-
-        $this->assertDatabaseHas('course_user', ['course_id' => $course->id, 'user_id' => $studentA->id]);
-        $this->assertDatabaseHas('course_user', ['course_id' => $course->id, 'user_id' => $studentB->id]);
-        $this->assertSame(2, $course->students()->count());
-    }
-
-    public function test_teacher_cannot_enroll_students_into_another_teachers_course(): void
+    public function test_a_teacher_cannot_view_another_teachers_course(): void
     {
         $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
         $otherTeacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
         $course = Course::factory()->create(['teacher_id' => $otherTeacher->id]);
 
-        $student = User::factory()->create(['role' => User::ROLE_STUDENT]);
-
         $this->actingAs($teacher)
             ->get(route('courses.show', $course))
             ->assertForbidden();
-
-        $this->actingAs($teacher)
-            ->post(route('courses.enroll', $course), ['student_ids' => [$student->id]])
-            ->assertForbidden();
-
-        $this->assertDatabaseMissing('course_user', ['course_id' => $course->id, 'user_id' => $student->id]);
     }
 
-    public function test_a_students_assignments_list_is_scoped_to_enrolled_courses(): void
+    public function test_a_students_assignments_list_is_scoped_to_their_semesters_courses(): void
     {
         $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
-        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'faculty' => 'BCA', 'semester' => 3]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $otherSemester = Faculty::factory()->withSemesters()->create()->semesters()->first();
 
-        $enrolledCourse = Course::factory()->create(['teacher_id' => $teacher->id]);
-        $otherCourse = Course::factory()->create(['teacher_id' => $teacher->id]);
+        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $semester->id]);
 
-        $enrolledCourse->students()->attach($student->id);
+        $enrolledCourse = Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $semester->id]);
+        $otherCourse = Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $otherSemester->id]);
 
-        $visibleAssignment = \App\Models\Assignment::factory()->create([
+        Assignment::factory()->create([
             'course_id' => $enrolledCourse->id,
             'title' => 'Visible Assignment',
         ]);
-        \App\Models\Assignment::factory()->create([
+        Assignment::factory()->create([
             'course_id' => $otherCourse->id,
             'title' => 'Hidden Assignment',
         ]);
@@ -176,5 +219,40 @@ class CourseEnrollmentTest extends TestCase
         $response->assertOk();
         $response->assertSeeText('Visible Assignment');
         $response->assertDontSeeText('Hidden Assignment');
+    }
+
+    public function test_admin_can_delete_a_course(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $course = Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $semester->id]);
+
+        $response = $this->actingAs($admin)->delete(route('admin.courses.destroy', $course));
+
+        $response->assertRedirect(route('admin.semesters.show', $semester));
+        $this->assertDatabaseMissing('courses', ['id' => $course->id]);
+    }
+
+    public function test_deleting_a_course_cascades_to_its_assignments(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $course = Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $semester->id]);
+        $assignment = Assignment::factory()->create(['course_id' => $course->id]);
+
+        $this->actingAs($admin)->delete(route('admin.courses.destroy', $course));
+
+        $this->assertDatabaseMissing('assignments', ['id' => $assignment->id]);
+    }
+
+    public function test_a_teacher_cannot_delete_a_course(): void
+    {
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $course = Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $semester->id]);
+
+        $this->actingAs($teacher)->delete(route('admin.courses.destroy', $course))->assertForbidden();
     }
 }

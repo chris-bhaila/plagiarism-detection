@@ -7,7 +7,7 @@
 @endphp
 
 <x-app-layout>
-    <div class="max-w-[1360px] mx-auto px-8 pt-10 pb-20">
+    <div class="pt-10 pb-20">
         <h1 class="text-[28px] font-semibold tracking-tight">Profile</h1>
 
         <div class="mt-7 flex flex-wrap gap-7 items-start">
@@ -27,11 +27,11 @@
                             @if ($user->isStudent())
                                 <div>
                                     <div class="text-[11px] font-semibold tracking-wide uppercase text-slate-800">Faculty</div>
-                                    <div class="mt-1.5 text-[15px] font-medium font-mono">{{ $user->faculty ?? '—' }}</div>
+                                    <div class="mt-1.5 text-[15px] font-medium font-mono">{{ $user->faculty()?->name ?? '—' }}</div>
                                 </div>
                                 <div>
                                     <div class="text-[11px] font-semibold tracking-wide uppercase text-slate-800">Semester</div>
-                                    <div class="mt-1.5 text-[15px] font-medium tabular-nums">{{ $user->semester ?? '—' }}</div>
+                                    <div class="mt-1.5 text-[15px] font-medium tabular-nums">{{ $user->semester?->number ?? '—' }}</div>
                                 </div>
                             @endif
 

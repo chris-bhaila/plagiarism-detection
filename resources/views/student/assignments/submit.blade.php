@@ -1,5 +1,5 @@
-<x-app-layout>
-    <div class="max-w-[760px] mx-auto px-8 pt-14 pb-24">
+<x-app-layout max-width="form">
+    <div class="pt-14 pb-24">
 
         @if (session('status'))
             <div class="mb-6 text-sm text-ok-deep bg-ok-bg border border-ok-border rounded-sm px-4 py-2.5">
@@ -72,6 +72,16 @@
 
                 @if ($assignment->description)
                     <p class="mt-7 max-w-[60ch] text-[14.5px] leading-[1.7] text-slate-900">{{ $assignment->description }}</p>
+                @endif
+
+                @if ($assignment->hasAttachment())
+                    <a href="{{ route('assignments.attachment', $assignment) }}"
+                       class="mt-5 inline-flex items-center gap-2 text-[13.5px] font-semibold text-navy hover:underline">
+                        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v7.19l2.22-2.22a.75.75 0 111.06 1.06l-3.5 3.5a.75.75 0 01-1.06 0l-3.5-3.5a.75.75 0 111.06-1.06l2.22 2.22V3.75A.75.75 0 0110 3zM4.5 15.5a.75.75 0 01.75-.75h9.5a.75.75 0 010 1.5h-9.5a.75.75 0 01-.75-.75z" clip-rule="evenodd" />
+                        </svg>
+                        {{ $assignment->attachment_name }}
+                    </a>
                 @endif
 
                 <p class="mt-4 max-w-[60ch] text-[13px] leading-[1.7] text-slate-800">

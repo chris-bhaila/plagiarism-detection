@@ -13,12 +13,22 @@ class Assignment extends Model
     /** @use HasFactory<AssignmentFactory> */
     use HasFactory;
 
+    /**
+     * Matches the `similarity_threshold` column's DB default — used by
+     * controllers so an admin/teacher leaving the field blank falls back
+     * to this explicitly, rather than passing a literal null through to
+     * the (non-nullable) column.
+     */
+    public const DEFAULT_SIMILARITY_THRESHOLD = 0.35;
+
     protected $fillable = [
         'course_id',
         'title',
         'description',
         'due_date',
         'similarity_threshold',
+        'attachment_path',
+        'attachment_name',
     ];
 
     protected function casts(): array
@@ -43,5 +53,10 @@ class Assignment extends Model
     public function submissions(): HasMany
     {
         return $this->hasMany(Submission::class);
+    }
+
+    public function hasAttachment(): bool
+    {
+        return $this->attachment_path !== null;
     }
 }

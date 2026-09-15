@@ -5,8 +5,9 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -23,13 +24,6 @@ class User extends Authenticatable
     public const ROLE_ADMIN = 'admin';
 
     /**
-     * The faculties students can belong to.
-     *
-     * @var list<string>
-     */
-    public const FACULTIES = ['BCA', 'BIM', 'BBM', 'BBA', 'B.Sc.'];
-
-    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -39,8 +33,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
-        'faculty',
-        'semester',
+        'semester_id',
     ];
 
     /**
@@ -63,7 +56,6 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'semester' => 'integer',
             'disabled_at' => 'datetime',
         ];
     }
@@ -89,13 +81,29 @@ class User extends Authenticatable
     }
 
     /**
-     * Courses this user (as a student) is enrolled in.
+     * The semester this user (as a student) belongs to.
      *
-     * @return BelongsToMany<Course, $this>
+     * @return BelongsTo<Semester, $this>
      */
-    public function enrolledCourses(): BelongsToMany
+    public function semester(): BelongsTo
     {
-        return $this->belongsToMany(Course::class, 'course_user')->withTimestamps();
+        return $this->belongsTo(Semester::class);
+    }
+
+    /**
+     * Courses this user (as a student) is auto-enrolled in — every course
+     * under their semester.
+     *
+     * @return HasManyThrough<Course, Semester, $this>
+     */
+    public function enrolledCourses(): HasManyThrough
+    {
+        return $this->hasManyThrough(Course::class, Semester::class, 'id', 'semester_id', 'semester_id', 'id');
+    }
+
+    public function faculty(): ?Faculty
+    {
+        return $this->semester?->faculty;
     }
 
     public function isStudent(): bool

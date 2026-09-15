@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use Database\Factories\CourseFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Course extends Model
@@ -16,6 +16,7 @@ class Course extends Model
 
     protected $fillable = [
         'teacher_id',
+        'semester_id',
         'name',
         'code',
     ];
@@ -31,6 +32,14 @@ class Course extends Model
     }
 
     /**
+     * @return BelongsTo<Semester, $this>
+     */
+    public function semester(): BelongsTo
+    {
+        return $this->belongsTo(Semester::class);
+    }
+
+    /**
      * @return HasMany<Assignment, $this>
      */
     public function assignments(): HasMany
@@ -39,12 +48,15 @@ class Course extends Model
     }
 
     /**
-     * Students enrolled in this course.
+     * Students auto-enrolled in this course — every student sharing its
+     * semester.
      *
-     * @return BelongsToMany<User, $this>
+     * @return Builder<User>
      */
-    public function students(): BelongsToMany
+    public function students(): Builder
     {
-        return $this->belongsToMany(User::class, 'course_user')->withTimestamps();
+        return User::query()
+            ->where('role', User::ROLE_STUDENT)
+            ->where('semester_id', $this->semester_id);
     }
 }

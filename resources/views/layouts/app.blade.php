@@ -15,6 +15,16 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
+    @php
+        // The single source of truth for page container width — see
+        // App\View\Components\AppLayout. Individual page views must not
+        // redeclare their own max-w/mx-auto/px-8 wrapper.
+        $containerClass = match ($maxWidth) {
+            'narrow' => 'max-w-[640px]',
+            'form' => 'max-w-[760px]',
+            default => 'max-w-[1360px]',
+        };
+    @endphp
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-slate-50">
             @include('layouts.navigation')
@@ -22,7 +32,7 @@
             <!-- Page Heading -->
             @isset($header)
                 <header class="bg-white border-b border-slate-300">
-                    <div class="max-w-[1360px] mx-auto py-6 px-8">
+                    <div class="{{ $containerClass }} mx-auto py-6 px-8">
                         {{ $header }}
                     </div>
                 </header>
@@ -30,7 +40,9 @@
 
             <!-- Page Content -->
             <main>
-                {{ $slot }}
+                <div class="{{ $containerClass }} mx-auto px-8">
+                    {{ $slot }}
+                </div>
             </main>
         </div>
     </body>

@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Course;
+use App\Models\Semester;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -20,6 +21,7 @@ class CourseFactory extends Factory
     {
         return [
             'teacher_id' => User::factory()->state(['role' => User::ROLE_TEACHER]),
+            'semester_id' => Semester::factory(),
             'name' => fake()->words(3, true),
             'code' => strtoupper(fake()->lexify('???')).fake()->numberBetween(100, 499),
         ];

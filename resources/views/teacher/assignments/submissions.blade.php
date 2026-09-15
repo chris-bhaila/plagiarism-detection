@@ -1,5 +1,11 @@
 <x-app-layout>
-    <div class="max-w-[1360px] mx-auto px-8 pt-10 pb-20">
+    <div class="pt-10 pb-20" x-data="{ selected: [] }">
+
+        @if (session('status'))
+            <div class="mb-6 text-sm text-ok-deep bg-ok-bg border border-ok-border rounded-sm px-4 py-2.5">
+                {{ session('status') }}
+            </div>
+        @endif
 
         <div class="flex items-end justify-between gap-10 flex-wrap">
             <div>
@@ -38,11 +44,43 @@
                     {{ $f['label'] }}
                 </a>
             @endforeach
-            <div class="ml-auto text-[12.5px] text-slate-800">Sorted by combined score, descending</div>
+            <div class="ml-auto flex items-center gap-3.5" x-show="selected.length === 0">
+                <a href="{{ route('assignments.submissions.export', $assignment) }}" class="text-[12.5px] font-semibold text-navy hover:underline">
+                    Export CSV
+                </a>
+                <span class="text-[12.5px] text-slate-800">Sorted by combined score, descending</span>
+            </div>
+
+            <div x-show="selected.length > 0" x-cloak class="ml-auto flex items-center gap-2.5">
+                <span class="text-[12.5px] text-slate-800" x-text="selected.length + ' selected'"></span>
+                <button type="submit" form="bulk-status-form" name="status" value="confirmed"
+                    class="text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border border-navy bg-navy text-white hover:bg-navy-light">
+                    Confirm
+                </button>
+                <button type="submit" form="bulk-status-form" name="status" value="reviewed"
+                    class="text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light">
+                    Mark reviewed
+                </button>
+                <button type="submit" form="bulk-status-form" name="status" value="dismissed"
+                    class="text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border border-slate-500 text-slate-900 bg-white hover:bg-slate-100">
+                    Dismiss
+                </button>
+            </div>
         </div>
 
+        <form id="bulk-status-form" method="POST" action="{{ route('similarity-reports.bulk-update-status') }}">
+            @csrf
+            @method('patch')
+            <template x-for="id in selected" :key="id">
+                <input type="hidden" name="report_ids[]" :value="id">
+            </template>
+        </form>
+
         <div class="mt-5 bg-white border border-slate-300 rounded-sm">
-            <div class="grid grid-cols-[minmax(0,1.9fr)_104px_minmax(150px,1.35fr)_minmax(0,1fr)_auto] items-center gap-4 px-6 py-3 border-b border-slate-300 text-[11.5px] font-semibold tracking-wide uppercase text-slate-800">
+            <div class="grid grid-cols-[28px_minmax(0,1.9fr)_104px_minmax(150px,1.35fr)_minmax(0,1fr)_auto] items-center gap-4 px-6 py-3 border-b border-slate-300 text-[11.5px] font-semibold tracking-wide uppercase text-slate-800">
+                <input type="checkbox"
+                    @change="selected = $event.target.checked ? [{{ $rows->pluck('topReport.id')->filter()->implode(',') }}] : []"
+                    class="w-[15px] h-[15px] rounded-sm accent-navy">
                 <div>Student</div>
                 <div>Combined</div>
                 <div>Score breakdown</div>
@@ -52,7 +90,13 @@
 
             @forelse ($rows as $row)
                 @php $status = \App\Models\SimilarityReport::statusStyles($row->status); @endphp
-                <div class="grid grid-cols-[minmax(0,1.9fr)_104px_minmax(150px,1.35fr)_minmax(0,1fr)_auto] items-center gap-4 px-6 py-4 border-b border-slate-200 hover:bg-slate-50">
+                <div x-data="{ notesOpen: false }" class="border-b border-slate-200 last:border-b-0">
+                <div class="grid grid-cols-[28px_minmax(0,1.9fr)_104px_minmax(150px,1.35fr)_minmax(0,1fr)_auto] items-center gap-4 px-6 py-4 hover:bg-slate-50">
+                    @if ($row->topReport)
+                        <input type="checkbox" value="{{ $row->topReport->id }}" x-model.number="selected" class="w-[15px] h-[15px] rounded-sm accent-navy">
+                    @else
+                        <span></span>
+                    @endif
                     <div class="min-w-0">
                         <div class="text-[15px] font-medium tracking-tight">{{ $row->submission->student->name }}</div>
                         <div class="mt-1 text-[12.5px] text-slate-800 flex flex-wrap gap-x-3.5 gap-y-1">
@@ -94,7 +138,11 @@
                         </div>
                     </div>
 
-                    <div class="text-right">
+                    <div class="text-right flex items-center justify-end gap-2">
+                        <button @click="notesOpen = !notesOpen" type="button"
+                            class="inline-block text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light whitespace-nowrap">
+                            <span x-text="notesOpen ? 'Hide notes' : 'Notes{{ $row->submission->notes->count() ? ' ('.$row->submission->notes->count().')' : '' }}'"></span>
+                        </button>
                         @if ($row->topReport)
                             <a href="{{ route('similarity-reports.show', $row->topReport) }}"
                                class="inline-block text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light">
@@ -102,6 +150,27 @@
                             </a>
                         @endif
                     </div>
+                </div>
+
+                <div x-show="notesOpen" x-cloak class="px-6 pb-5 pt-1">
+                    <div class="max-w-[560px] bg-slate-50 border border-slate-200 rounded-sm p-4">
+                        @forelse ($row->submission->notes as $note)
+                            <div class="pb-3 mb-3 border-b border-slate-200 last:border-b-0 last:pb-0 last:mb-0">
+                                <div class="text-[13px] text-ink leading-[1.6]">{{ $note->body }}</div>
+                                <div class="mt-1 text-[11.5px] text-slate-700">{{ $note->author->name }} &middot; {{ $note->created_at->format('j M Y, H:i') }}</div>
+                            </div>
+                        @empty
+                            <p class="text-[12.5px] text-slate-700">No notes yet.</p>
+                        @endforelse
+
+                        <form method="POST" action="{{ route('submissions.notes.store', $row->submission) }}" class="mt-3 flex items-start gap-2">
+                            @csrf
+                            <textarea name="body" rows="2" placeholder="Add a follow-up note for this student…" required
+                                class="flex-1 box-border bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13px] text-ink focus:border-navy-light focus:outline-none"></textarea>
+                            <x-primary-button class="py-2">Add</x-primary-button>
+                        </form>
+                    </div>
+                </div>
                 </div>
             @empty
                 <div class="px-6 py-10 text-center text-slate-800 text-sm">No submissions match this filter.</div>

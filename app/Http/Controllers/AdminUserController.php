@@ -2,27 +2,36 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Faculty;
+use App\Models\SimilarityReport;
+use App\Models\Submission;
 use App\Models\User;
+use App\Repositories\Contracts\AssignmentRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 
 class AdminUserController extends Controller
 {
     public function __construct(
         protected UserRepositoryInterface $users,
+        protected AssignmentRepositoryInterface $assignments,
     ) {}
 
     /**
-     * All teacher accounts. Faculty/semester don't apply to teachers, so
-     * there's nothing to filter by here — just the full list.
+     * All teacher accounts, filterable by name/email search text.
      */
-    public function teachers(): View
+    public function teachers(Request $request): View
     {
+        $filters = ['search' => $request->query('search')];
+
         return view('admin.users.teachers', [
-            'teachers' => $this->users->teachers(),
+            'teachers' => $this->users->teachers($filters['search']),
+            'filters' => $filters,
         ]);
     }
 
@@ -32,15 +41,107 @@ class AdminUserController extends Controller
     public function students(Request $request): View
     {
         $filters = [
-            'faculty' => $request->query('faculty'),
-            'semester' => $request->filled('semester') ? (int) $request->query('semester') : null,
+            'faculty_id' => $request->filled('faculty_id') ? (int) $request->query('faculty_id') : null,
+            'semester_id' => $request->filled('semester_id') ? (int) $request->query('semester_id') : null,
         ];
 
         return view('admin.users.students', [
             'students' => $this->users->students($filters),
             'filters' => $filters,
-            'faculties' => User::FACULTIES,
+            'faculties' => Faculty::with('semesters')->orderBy('name')->get(),
         ]);
+    }
+
+    /**
+     * New-account form — student or teacher only. Admin accounts are
+     * provisioned directly against the database, not through this UI; an
+     * existing account's role (including up to admin) can still be
+     * changed via edit()/update().
+     */
+    public function create(): View
+    {
+        return view('admin.users.create', [
+            'faculties' => Faculty::with('semesters')->orderBy('name')->get(),
+        ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users')],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'role' => ['required', Rule::in([User::ROLE_STUDENT, User::ROLE_TEACHER])],
+            'semester_id' => ['nullable', 'required_if:role,'.User::ROLE_STUDENT, Rule::exists('semesters', 'id')],
+        ]);
+
+        $user = $this->users->create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role' => $validated['role'],
+            'semester_id' => $validated['role'] === User::ROLE_STUDENT ? $validated['semester_id'] : null,
+        ]);
+
+        return redirect()->route($user->isStudent() ? 'admin.students' : 'admin.teachers')
+            ->with('status', "{$user->name} created.");
+    }
+
+    /**
+     * A student's profile: faculty/semester, their auto-enrolled courses,
+     * and every assignment across those courses with this student's
+     * submission status (if any) on each. A teacher's profile: the
+     * courses they teach, each with roster/assignment/pending-review
+     * counts.
+     */
+    public function show(User $user): View
+    {
+        abort_unless($user->isStudent() || $user->isTeacher(), 404);
+
+        if ($user->isTeacher()) {
+            $courses = $user->coursesTaught()->with('semester.faculty')->get()
+                ->map(function ($course) {
+                    $assignmentIds = $course->assignments()->pluck('id');
+
+                    $pendingCount = SimilarityReport::where('status', SimilarityReport::STATUS_PENDING)
+                        ->where(fn ($query) => $query
+                            ->whereHas('submissionA', fn ($q) => $q->whereIn('assignment_id', $assignmentIds))
+                            ->orWhereHas('submissionB', fn ($q) => $q->whereIn('assignment_id', $assignmentIds)))
+                        ->count();
+
+                    return (object) [
+                        'course' => $course,
+                        'studentCount' => $course->students()->count(),
+                        'assignmentCount' => $assignmentIds->count(),
+                        'pendingCount' => $pendingCount,
+                    ];
+                });
+
+            return view('admin.users.show-teacher', compact('user', 'courses'));
+        }
+
+        $user->load('semester.faculty');
+
+        $courses = $user->enrolledCourses()->with('teacher')->get();
+
+        $assignments = $this->assignments->forStudent($user)
+            ->map(function ($assignment) use ($user) {
+                $submission = Submission::where('assignment_id', $assignment->id)
+                    ->where('student_id', $user->id)
+                    ->first();
+
+                $topReport = $submission?->similarityReports()->first();
+
+                return (object) [
+                    'assignment' => $assignment,
+                    'submission' => $submission,
+                    'topReport' => $topReport,
+                ];
+            })
+            ->sortByDesc(fn ($row) => $row->assignment->due_date)
+            ->values();
+
+        return view('admin.users.show', compact('user', 'courses', 'assignments'));
     }
 
     /**
@@ -52,7 +153,7 @@ class AdminUserController extends Controller
     {
         return view('admin.users.edit', [
             'editedUser' => $user,
-            'faculties' => User::FACULTIES,
+            'faculties' => Faculty::with('semesters')->orderBy('name')->get(),
         ]);
     }
 
@@ -62,8 +163,7 @@ class AdminUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'role' => ['required', Rule::in([User::ROLE_STUDENT, User::ROLE_TEACHER, User::ROLE_ADMIN])],
-            'faculty' => ['nullable', 'required_if:role,'.User::ROLE_STUDENT, 'string', Rule::in(User::FACULTIES)],
-            'semester' => ['nullable', 'required_if:role,'.User::ROLE_STUDENT, 'integer', 'between:1,8'],
+            'semester_id' => ['nullable', 'required_if:role,'.User::ROLE_STUDENT, Rule::exists('semesters', 'id')],
         ]);
 
         // Admins can't demote themselves — a lone admin doing this would
@@ -74,11 +174,10 @@ class AdminUserController extends Controller
             "You can't change your own role away from admin.",
         );
 
-        // Faculty/semester are student-only fields; clear them for anyone
-        // else so a former student doesn't carry stale values around.
+        // Semester is a student-only field; clear it for anyone else so a
+        // former student doesn't carry a stale value around.
         if ($validated['role'] !== User::ROLE_STUDENT) {
-            $validated['faculty'] = null;
-            $validated['semester'] = null;
+            $validated['semester_id'] = null;
         }
 
         $this->users->update($user, $validated);

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Faculty;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -10,22 +11,23 @@ class AdminUserManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_edit_a_students_name_email_and_faculty_semester(): void
+    public function test_admin_can_edit_a_students_name_email_and_semester(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $originalSemester = Faculty::factory()->withSemesters()->create(['name' => 'BCA'])->semesters()->where('number', 1)->first();
+        $newSemester = Faculty::factory()->withSemesters()->create(['name' => 'BBM'])->semesters()->where('number', 6)->first();
+
         $student = User::factory()->create([
             'role' => User::ROLE_STUDENT,
             'name' => 'Old Name',
-            'faculty' => 'BCA',
-            'semester' => 1,
+            'semester_id' => $originalSemester->id,
         ]);
 
         $response = $this->actingAs($admin)->patch(route('admin.users.update', $student), [
             'name' => 'New Name',
             'email' => $student->email,
             'role' => User::ROLE_STUDENT,
-            'faculty' => 'BBM',
-            'semester' => 6,
+            'semester_id' => $newSemester->id,
         ]);
 
         $response->assertSessionHasNoErrors();
@@ -33,18 +35,14 @@ class AdminUserManagementTest extends TestCase
 
         $student->refresh();
         $this->assertSame('New Name', $student->name);
-        $this->assertSame('BBM', $student->faculty);
-        $this->assertSame(6, $student->semester);
+        $this->assertSame($newSemester->id, $student->semester_id);
     }
 
-    public function test_faculty_and_semester_are_cleared_when_role_changes_away_from_student(): void
+    public function test_semester_is_cleared_when_role_changes_away_from_student(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
-        $student = User::factory()->create([
-            'role' => User::ROLE_STUDENT,
-            'faculty' => 'BCA',
-            'semester' => 1,
-        ]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $semester->id]);
 
         $this->actingAs($admin)->patch(route('admin.users.update', $student), [
             'name' => $student->name,
@@ -54,24 +52,23 @@ class AdminUserManagementTest extends TestCase
 
         $student->refresh();
         $this->assertSame(User::ROLE_TEACHER, $student->role);
-        $this->assertNull($student->faculty);
-        $this->assertNull($student->semester);
+        $this->assertNull($student->semester_id);
     }
 
-    public function test_updating_a_student_requires_faculty_and_semester(): void
+    public function test_updating_a_student_requires_a_semester(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
-        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'faculty' => 'BCA', 'semester' => 1]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $semester->id]);
 
         $response = $this->actingAs($admin)->patch(route('admin.users.update', $student), [
             'name' => $student->name,
             'email' => $student->email,
             'role' => User::ROLE_STUDENT,
-            'faculty' => '',
-            'semester' => '',
+            'semester_id' => '',
         ]);
 
-        $response->assertSessionHasErrors(['faculty', 'semester']);
+        $response->assertSessionHasErrors(['semester_id']);
     }
 
     public function test_admin_cannot_change_their_own_role(): void
@@ -129,7 +126,8 @@ class AdminUserManagementTest extends TestCase
 
     public function test_a_user_disabled_mid_session_is_logged_out_on_their_next_request(): void
     {
-        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'faculty' => 'BCA', 'semester' => 1]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $semester->id]);
 
         // Confirm the session is live before disabling.
         $this->actingAs($student)->get(route('assignments.index'))->assertOk();
@@ -146,7 +144,8 @@ class AdminUserManagementTest extends TestCase
     public function test_non_admins_cannot_edit_or_disable_users(): void
     {
         $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
-        $otherUser = User::factory()->create(['role' => User::ROLE_STUDENT, 'faculty' => 'BCA', 'semester' => 1]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $otherUser = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $semester->id]);
 
         $this->actingAs($teacher)->get(route('admin.users.edit', $otherUser))->assertForbidden();
         $this->actingAs($teacher)->patch(route('admin.users.update', $otherUser), ['name' => 'x'])->assertForbidden();

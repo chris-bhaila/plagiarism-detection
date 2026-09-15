@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Faculty;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,26 +48,25 @@ class ProfileController extends Controller
      */
     public function completeForm(Request $request): View|RedirectResponse
     {
-        if ($request->user()->faculty && $request->user()->semester) {
+        if ($request->user()->semester_id) {
             return redirect()->route('assignments.index');
         }
 
         return view('profile.complete', [
-            'faculties' => User::FACULTIES,
+            'faculties' => Faculty::with('semesters')->orderBy('name')->get(),
         ]);
     }
 
     /**
-     * Save the student's faculty/semester and send them on their way.
-     * Refuses to run again once both are already set — see completeForm().
+     * Save the student's semester and send them on their way. Refuses to
+     * run again once already set — see completeForm().
      */
     public function completeStore(Request $request): RedirectResponse
     {
-        abort_if($request->user()->faculty && $request->user()->semester, 403);
+        abort_if($request->user()->semester_id, 403);
 
         $validated = $request->validate([
-            'faculty' => ['required', 'string', Rule::in(User::FACULTIES)],
-            'semester' => ['required', 'integer', 'between:1,8'],
+            'semester_id' => ['required', Rule::exists('semesters', 'id')],
         ]);
 
         $request->user()->update($validated);
