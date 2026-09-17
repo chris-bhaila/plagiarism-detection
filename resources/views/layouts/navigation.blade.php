@@ -77,7 +77,7 @@
     </div>
 
     <!-- Responsive Navigation Menu -->
-    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
+    <div x-show="open" x-cloak x-transition class="sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
             @if (Auth::user()->isStudent())
                 <x-responsive-nav-link :href="route('assignments.index')" :active="request()->routeIs('assignments.*')">

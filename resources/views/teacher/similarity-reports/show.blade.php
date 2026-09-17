@@ -79,7 +79,7 @@
                                     </form>
                                 </div>
 
-                                <div x-show="notesOpen" x-cloak class="mt-3">
+                                <div x-show="notesOpen" x-cloak x-transition class="mt-3">
                                     @forelse ($submission->notes as $note)
                                         <div class="pb-3 mb-3 border-b border-slate-200 last:border-b-0 last:pb-0 last:mb-0">
                                             <div class="text-[13px] text-ink leading-[1.6]">{{ $note->body }}</div>

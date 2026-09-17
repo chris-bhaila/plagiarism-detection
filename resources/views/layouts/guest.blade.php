@@ -61,7 +61,7 @@
                     </a>
                 </div>
 
-                <div class="w-full max-w-[380px] bg-white border border-slate-300 rounded-sm px-8 py-9">
+                <div class="w-full max-w-[380px] bg-white border border-slate-300 rounded-sm px-8 py-9" style="animation: page-fade-in 220ms ease-out">
                     {{ $slot }}
                 </div>
             </div>

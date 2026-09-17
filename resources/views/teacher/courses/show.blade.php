@@ -129,6 +129,7 @@
                     @forelse ($roster as $student)
                         <a href="{{ route('courses.students.show', [$course, $student]) }}"
                            x-show="matches(@js(Str::lower($student->name.' '.$student->email)))" x-cloak
+                           x-transition.opacity.duration.100ms
                            class="flex items-center justify-between gap-4 px-5 py-3 border-b border-slate-200 last:border-b-0 hover:bg-slate-50">
                             <div>
                                 <div class="text-[14px] font-medium text-ink">{{ $student->name }}</div>

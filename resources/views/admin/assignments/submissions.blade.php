@@ -48,14 +48,14 @@
                     {{ $f['label'] }}
                 </a>
             @endforeach
-            <div class="ml-auto flex items-center gap-3.5" x-show="selected.length === 0">
+            <div class="ml-auto flex items-center gap-3.5" x-show="selected.length === 0" x-transition>
                 <a href="{{ route('admin.assignments.submissions.export', $assignment) }}" class="text-[12.5px] font-semibold text-navy hover:underline">
                     Export CSV
                 </a>
                 <span class="text-[12.5px] text-slate-800">Sorted by combined score, descending</span>
             </div>
 
-            <div x-show="selected.length > 0" x-cloak class="ml-auto flex items-center gap-2.5">
+            <div x-show="selected.length > 0" x-cloak x-transition class="ml-auto flex items-center gap-2.5">
                 <span class="text-[12.5px] text-slate-800" x-text="selected.length + ' selected'"></span>
                 <button type="submit" form="bulk-status-form" name="status" value="confirmed"
                     class="text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border border-navy bg-navy text-white hover:bg-navy-light">
@@ -164,7 +164,7 @@
                     </div>
                 </div>
 
-                <div x-show="notesOpen" x-cloak class="px-6 pb-5 pt-1">
+                <div x-show="notesOpen" x-cloak x-transition class="px-6 pb-5 pt-1">
                     <div class="max-w-[560px] bg-slate-50 border border-slate-200 rounded-sm p-4">
                         @forelse ($row->submission->notes as $note)
                             <div class="pb-3 mb-3 border-b border-slate-200 last:border-b-0 last:pb-0 last:mb-0">

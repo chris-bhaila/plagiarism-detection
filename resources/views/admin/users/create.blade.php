@@ -60,7 +60,7 @@
                     <x-input-error :messages="$errors->get('role')" class="mt-1.5" />
                 </div>
 
-                <div x-show="role === '{{ \App\Models\User::ROLE_STUDENT }}'" x-cloak class="grid grid-cols-2 gap-4">
+                <div x-show="role === '{{ \App\Models\User::ROLE_STUDENT }}'" x-cloak x-transition class="grid grid-cols-2 gap-4">
                     <div>
                         <x-input-label for="faculty_id" value="Faculty" />
                         <select id="faculty_id" x-model.number="facultyId" @change="semesterId = null"

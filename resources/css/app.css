@@ -10,8 +10,48 @@
     ::selection {
         background: #d5e2ef;
     }
+
+    a, button, input, select, textarea, [role="button"] {
+        transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+        transition-duration: 150ms;
+        transition-timing-function: ease-out;
+    }
+
+    /* Any element styled with a Tailwind hover: utility (rows, badges, cards —
+       not just a/button) should ease into that state instead of snapping. */
+    [class*="hover:"] {
+        transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+        transition-duration: 150ms;
+        transition-timing-function: ease-out;
+    }
 }
 
 [x-cloak] {
     display: none !important;
+}
+
+/* Subtle lift on hoverable list/grid cards throughout the app. */
+.card-hover {
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out;
+}
+
+.card-hover:hover {
+    box-shadow: 0 4px 14px -4px rgb(27 58 92 / 0.18);
+    transform: translateY(-1px);
+}
+
+/* Fades in the main content on each page load. */
+main {
+    animation: page-fade-in 220ms ease-out;
+}
+
+@keyframes page-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

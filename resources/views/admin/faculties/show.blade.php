@@ -10,14 +10,14 @@
             </div>
         @endif
 
-        <div class="mt-2.5 flex items-center gap-3" x-show="! renaming">
+        <div class="mt-2.5 flex items-center gap-3" x-show="! renaming" x-transition>
             <h1 class="text-[28px] font-semibold tracking-tight">{{ $faculty->name }}</h1>
             <button @click="renaming = true" type="button" class="text-[12px] font-semibold text-navy hover:underline">
                 Rename
             </button>
         </div>
 
-        <form x-show="renaming" x-cloak method="POST" action="{{ route('admin.faculties.update', $faculty) }}" class="mt-2.5 flex items-start gap-2.5">
+        <form x-show="renaming" x-cloak x-transition method="POST" action="{{ route('admin.faculties.update', $faculty) }}" class="mt-2.5 flex items-start gap-2.5">
             @csrf
             @method('patch')
             <div>
