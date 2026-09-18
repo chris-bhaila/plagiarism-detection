@@ -31,28 +31,12 @@
                             Click here to re-send the verification email.
                         </button>
                     </p>
-
-                    @if (session('status') === 'verification-link-sent')
-                        <p class="mt-2 text-[12.5px] font-medium text-ok-deep">
-                            A new verification link has been sent to your email address.
-                        </p>
-                    @endif
                 </div>
             @endif
         </div>
 
         <div class="flex items-center gap-4">
             <x-primary-button>Save</x-primary-button>
-
-            @if (session('status') === 'profile-updated')
-                <p
-                    x-data="{ show: true }"
-                    x-show="show"
-                    x-transition
-                    x-init="setTimeout(() => show = false, 2000)"
-                    class="text-[13px] text-ok-deep"
-                >Saved.</p>
-            @endif
         </div>
     </form>
 </section>

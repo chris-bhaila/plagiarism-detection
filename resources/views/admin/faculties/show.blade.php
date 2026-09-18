@@ -4,12 +4,6 @@
             &larr; Back to faculties
         </a>
 
-        @if (session('status'))
-            <div class="mt-6 text-sm text-ok-deep bg-ok-bg border border-ok-border rounded-sm px-4 py-2.5">
-                {{ session('status') }}
-            </div>
-        @endif
-
         <div class="mt-2.5 flex items-center gap-3" x-show="! renaming" x-transition>
             <h1 class="text-[28px] font-semibold tracking-tight">{{ $faculty->name }}</h1>
             <button @click="renaming = true" type="button" class="text-[12px] font-semibold text-navy hover:underline">

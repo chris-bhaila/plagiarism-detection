@@ -2,8 +2,6 @@
     <h1 class="text-[22px] font-semibold tracking-tight">Log in</h1>
     <p class="mt-1.5 text-[13.5px] text-slate-900">Enter your credentials to access your account.</p>
 
-    <x-auth-session-status class="mt-5" :status="session('status')" />
-
     <form method="POST" action="{{ route('login') }}" class="mt-7 grid gap-5">
         @csrf
 

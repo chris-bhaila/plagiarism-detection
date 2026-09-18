@@ -14,6 +14,8 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased text-ink">
+        @include('layouts.toasts')
+
         <div class="min-h-screen flex">
 
             <!-- Brand panel -->

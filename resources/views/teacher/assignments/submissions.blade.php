@@ -1,12 +1,6 @@
 <x-app-layout>
     <div class="pt-10 pb-20" x-data="{ selected: [] }">
 
-        @if (session('status'))
-            <div class="mb-6 text-sm text-ok-deep bg-ok-bg border border-ok-border rounded-sm px-4 py-2.5">
-                {{ session('status') }}
-            </div>
-        @endif
-
         <div class="flex items-end justify-between gap-10 flex-wrap">
             <div>
                 <div class="text-xs font-semibold tracking-[0.9px] uppercase text-slate-800">

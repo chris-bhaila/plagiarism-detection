@@ -7,12 +7,6 @@
 <x-app-layout>
     <div class="pt-8 pb-20">
 
-        @if (session('status'))
-            <div class="mb-5 text-sm text-ok-deep bg-ok-bg border border-ok-border rounded-sm px-4 py-2.5">
-                {{ session('status') }}
-            </div>
-        @endif
-
         <div class="text-[12.5px] text-slate-800">
             <a href="{{ route('admin.assignments.submissions', $report->submissionA->assignment) }}">
                 {{ $report->submissionA->assignment->course->code }} · {{ $report->submissionA->assignment->title }}

@@ -1,12 +1,6 @@
 <x-app-layout max-width="narrow">
     <div class="pt-10 pb-20">
 
-        @if (session('status'))
-            <div class="mb-6 text-sm text-ok-deep bg-ok-bg border border-ok-border rounded-sm px-4 py-2.5">
-                {{ session('status') }}
-            </div>
-        @endif
-
         <a href="{{ $editedUser->isStudent() ? route('admin.students') : route('admin.teachers') }}" class="text-[12.5px] text-slate-800 hover:text-ink">
             &larr; Back to {{ $editedUser->isStudent() ? 'students' : 'teachers' }}
         </a>

@@ -26,6 +26,8 @@
         };
     @endphp
     <body class="font-sans antialiased">
+        @include('layouts.toasts')
+
         <div class="min-h-screen bg-slate-50">
             @include('layouts.navigation')
 
