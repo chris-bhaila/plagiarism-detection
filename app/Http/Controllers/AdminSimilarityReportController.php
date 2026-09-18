@@ -59,7 +59,8 @@ class AdminSimilarityReportController extends Controller
         $this->reports->update($similarityReport, $validated);
 
         return redirect()->route('admin.similarity-reports.show', $similarityReport)
-            ->with('status', 'Report marked as '.$validated['status'].'.');
+            ->with('status', 'Report marked as '.$validated['status'].'.')
+            ->with('reportStatusJustChanged', [$similarityReport->id]);
     }
 
     /**
@@ -79,7 +80,8 @@ class AdminSimilarityReportController extends Controller
         $count = count($validated['report_ids']);
 
         return redirect()->back()
-            ->with('status', "{$count} ".Str::plural('report', $count)." marked as {$validated['status']}.");
+            ->with('status', "{$count} ".Str::plural('report', $count)." marked as {$validated['status']}.")
+            ->with('reportStatusJustChanged', $validated['report_ids']);
     }
 
     /**

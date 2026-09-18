@@ -16,6 +16,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SimilarityReportController;
 use App\Http\Controllers\StudentAssignmentController;
+use App\Http\Controllers\StudentCourseController;
+use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\SubmissionNoteController;
 use App\Http\Controllers\SubmissionSimilarityReleaseController;
 use App\Models\User;
@@ -42,11 +44,20 @@ Route::middleware('auth')->group(function () {
 
 // Student routes
 Route::middleware(['auth', 'role:'.User::ROLE_STUDENT])->group(function () {
+    Route::get('/my-dashboard', [StudentDashboardController::class, 'index'])
+        ->name('student.dashboard');
+
     Route::get('/complete-profile', [ProfileController::class, 'completeForm'])
         ->name('profile.complete');
 
     Route::post('/complete-profile', [ProfileController::class, 'completeStore'])
         ->name('profile.complete.store');
+
+    Route::get('/my-courses', [StudentCourseController::class, 'index'])
+        ->name('student.courses.index');
+
+    Route::get('/my-courses/{course}', [StudentCourseController::class, 'show'])
+        ->name('student.courses.show');
 
     Route::get('/assignments', [StudentAssignmentController::class, 'index'])
         ->name('assignments.index');

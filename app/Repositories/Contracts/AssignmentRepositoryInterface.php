@@ -26,11 +26,12 @@ interface AssignmentRepositoryInterface
     public function forCourse(Course $course): Collection;
 
     /**
-     * Assignments across all courses a student is enrolled in.
+     * Assignments across all courses a student is enrolled in, optionally
+     * filtered by title/course-code search text.
      *
      * @return Collection<int, Assignment>
      */
-    public function forStudent(User $student): Collection;
+    public function forStudent(User $student, ?string $search = null): Collection;
 
     /**
      * @param  array<string, mixed>  $data

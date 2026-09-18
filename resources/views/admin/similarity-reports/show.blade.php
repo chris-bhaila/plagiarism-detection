@@ -2,6 +2,7 @@
     $threshold = $report->submissionA->assignment->similarity_threshold;
     $band = \App\Models\SimilarityReport::scoreBand($report->combined_score, $threshold);
     $status = \App\Models\SimilarityReport::statusStyles($report->status);
+    $statusJustChanged = in_array($report->id, session('reportStatusJustChanged', []));
 @endphp
 
 <x-app-layout>
@@ -132,8 +133,10 @@
 
                 <div class="bg-white border border-slate-300 rounded-sm p-5">
                     <div class="text-[11.5px] font-semibold tracking-wide uppercase text-slate-800">Flag status</div>
-                    <div class="mt-2.5 flex items-center gap-2.5">
-                        <span class="inline-block text-[13px] font-semibold px-2.5 py-1 rounded-sm border {{ $status['bg'] }} {{ $status['fg'] }} {{ $status['border'] }}">
+                    <div class="mt-2.5 flex items-center gap-2.5"
+                        @if ($statusJustChanged) x-data="{ show: false }" x-init="$nextTick(() => show = true)" @endif>
+                        <span @if ($statusJustChanged) x-show="show" x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" @endif
+                            class="inline-block text-[13px] font-semibold px-2.5 py-1 rounded-sm border transition-colors duration-300 {{ $status['bg'] }} {{ $status['fg'] }} {{ $status['border'] }}">
                             {{ ucfirst($report->status) }}
                         </span>
                     </div>

@@ -115,4 +115,63 @@ class StudentAssignmentExperienceTest extends TestCase
         // Read-only: no form action posts to the notes-store route on this page.
         $response->assertDontSee(route('submissions.notes.store', $submission), false);
     }
+
+    public function test_assignments_list_shows_new_badge_for_unseen_note(): void
+    {
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $course = Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $semester->id]);
+        $assignment = Assignment::factory()->create(['course_id' => $course->id]);
+        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $semester->id]);
+
+        $submission = Submission::factory()->create(['assignment_id' => $assignment->id, 'student_id' => $student->id]);
+        SubmissionNote::create([
+            'submission_id' => $submission->id,
+            'author_id' => $teacher->id,
+            'body' => 'New feedback the student has not seen yet.',
+        ]);
+
+        $this->actingAs($student)->get(route('assignments.index'))->assertSee('New');
+    }
+
+    public function test_new_badge_clears_after_the_student_opens_the_receipt(): void
+    {
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $course = Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $semester->id]);
+        $assignment = Assignment::factory()->create(['course_id' => $course->id]);
+        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $semester->id]);
+
+        $submission = Submission::factory()->create(['assignment_id' => $assignment->id, 'student_id' => $student->id]);
+        SubmissionNote::create([
+            'submission_id' => $submission->id,
+            'author_id' => $teacher->id,
+            'body' => 'Feedback.',
+        ]);
+
+        $this->actingAs($student)->get(route('assignments.index'))->assertSee('New');
+
+        // Opening the receipt marks it viewed.
+        $this->actingAs($student)->get(route('assignments.submit.show', $assignment))->assertOk();
+
+        $this->actingAs($student)->get(route('assignments.index'))->assertDontSee('New');
+        $this->assertNotNull($submission->fresh()->viewed_at);
+    }
+
+    public function test_assignments_list_can_be_filtered_by_title_or_course_code(): void
+    {
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $semester = Faculty::factory()->withSemesters()->create()->semesters()->first();
+        $course = Course::factory()->create(['teacher_id' => $teacher->id, 'semester_id' => $semester->id, 'code' => 'CACS101']);
+        Assignment::factory()->create(['course_id' => $course->id, 'title' => 'Essay on Computing History']);
+        Assignment::factory()->create(['course_id' => $course->id, 'title' => 'Quiz on Networking']);
+
+        $student = User::factory()->create(['role' => User::ROLE_STUDENT, 'semester_id' => $semester->id]);
+
+        $response = $this->actingAs($student)->get(route('assignments.index', ['search' => 'Computing']));
+
+        $response->assertOk();
+        $response->assertSee('Essay on Computing History');
+        $response->assertDontSee('Quiz on Networking');
+    }
 }

@@ -31,6 +31,7 @@
                             faculties: @js($faculties->map(fn ($f) => ['id' => $f->id, 'name' => $f->name, 'semesters' => $f->semesters->map(fn ($s) => ['id' => $s->id, 'number' => $s->number])])),
                             facultyId: null,
                             semesterId: {{ old('semester_id') ? (int) old('semester_id') : 'null' }},
+                            submitting: false,
                             get semesters() {
                                 const faculty = this.faculties.find(f => f.id === this.facultyId);
                                 return faculty ? faculty.semesters : [];
@@ -40,7 +41,7 @@
                                 const f = faculties.find(f => f.semesters.some(s => s.id === semesterId));
                                 if (f) facultyId = f.id;
                             }
-                        ">
+                        " @submit="submitting = true">
                         @csrf
 
                         <div>
@@ -66,7 +67,7 @@
                             <x-input-error :messages="$errors->get('semester_id')" class="mt-1.5" />
                         </div>
 
-                        <x-primary-button class="w-full py-3 text-[14.5px]">
+                        <x-primary-button loading="submitting" class="w-full py-3 text-[14.5px]">
                             Continue
                         </x-primary-button>
                     </form>

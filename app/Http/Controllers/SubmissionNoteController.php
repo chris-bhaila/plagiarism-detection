@@ -10,8 +10,8 @@ class SubmissionNoteController extends Controller
 {
     /**
      * Add a follow-up note to a submission — only the course's own
-     * teacher may. Teacher/admin-facing only; no student-visible surface
-     * yet (deliberately deferred).
+     * teacher may write one. The student it belongs to can read it
+     * (read-only) on their own submission receipt page.
      */
     public function store(Request $request, Submission $submission): RedirectResponse
     {

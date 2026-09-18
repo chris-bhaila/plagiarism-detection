@@ -30,12 +30,20 @@ class AssignmentRepository implements AssignmentRepositoryInterface
         return $course->assignments()->get();
     }
 
-    public function forStudent(User $student): Collection
+    public function forStudent(User $student, ?string $search = null): Collection
     {
         $courseIds = $student->enrolledCourses()->pluck('courses.id');
 
         return Assignment::with('course')
             ->whereIn('course_id', $courseIds)
+            ->when($search, function ($query, string $search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('title', 'like', "%{$search}%")
+                        ->orWhereHas('course', function ($query) use ($search) {
+                            $query->where('code', 'like', "%{$search}%");
+                        });
+                });
+            })
             ->get();
     }
 

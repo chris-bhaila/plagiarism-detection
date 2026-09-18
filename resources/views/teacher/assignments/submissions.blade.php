@@ -83,8 +83,11 @@
             </div>
 
             @forelse ($rows as $row)
-                @php $status = \App\Models\SimilarityReport::statusStyles($row->status); @endphp
-                <div x-data="{ notesOpen: false }" class="border-b border-slate-200 last:border-b-0">
+                @php
+                    $status = \App\Models\SimilarityReport::statusStyles($row->status);
+                    $statusJustChanged = $row->topReport && in_array($row->topReport->id, session('reportStatusJustChanged', []));
+                @endphp
+                <div x-data="{ notesOpen: false }" class="border-b border-slate-200 last:border-b-0 animate-row-in" style="animation-delay: {{ min($loop->index * 20, 300) }}ms">
                 <div class="grid grid-cols-[28px_minmax(0,1.9fr)_104px_minmax(150px,1.35fr)_minmax(0,1fr)_auto] items-center gap-4 px-6 py-4 hover:bg-slate-50">
                     @if ($row->topReport)
                         <input type="checkbox" value="{{ $row->topReport->id }}" x-model.number="selected" class="w-[15px] h-[15px] rounded-sm accent-navy">
@@ -123,8 +126,9 @@
                         </div>
                     </div>
 
-                    <div>
-                        <span class="inline-block text-[11.5px] font-semibold px-2.5 py-1 rounded-sm border {{ $status['bg'] }} {{ $status['fg'] }} {{ $status['border'] }}">
+                    <div @if ($statusJustChanged) x-data="{ show: false }" x-init="$nextTick(() => show = true)" @endif>
+                        <span @if ($statusJustChanged) x-show="show" x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" @endif
+                            class="inline-block text-[11.5px] font-semibold px-2.5 py-1 rounded-sm border transition-colors duration-300 {{ $status['bg'] }} {{ $status['fg'] }} {{ $status['border'] }}">
                             {{ $row->status ? ucfirst($row->status) : 'No match' }}
                         </span>
                         <div class="mt-1.5 text-[11.5px] text-slate-700">
@@ -141,7 +145,7 @@
                             @csrf
                             @method('PATCH')
                             <button type="submit"
-                                class="inline-block text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border whitespace-nowrap {{ $row->submission->isSimilarityReleased() ? 'border-ok-border bg-ok-bg text-ok-deep' : 'border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light' }}">
+                                class="inline-block text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border whitespace-nowrap transition-colors duration-300 {{ $row->submission->isSimilarityReleased() ? 'border-ok-border bg-ok-bg text-ok-deep' : 'border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light' }}">
                                 {{ $row->submission->isSimilarityReleased() ? 'Released ✓' : 'Release to student' }}
                             </button>
                         </form>
