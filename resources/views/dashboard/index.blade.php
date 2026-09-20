@@ -4,8 +4,19 @@
         <div class="flex items-end justify-between gap-6 flex-wrap">
             <div>
                 <h1 class="m-0 text-[28px] font-semibold tracking-tight">Integrity analytics</h1>
-                <div class="mt-2.5 text-[13.5px] text-slate-900">Across all courses · updated just now</div>
+                <div class="mt-2.5 text-[13.5px] text-slate-900">{{ $selectedCourse ? $selectedCourse->code.' · '.$selectedCourse->name : 'Across all courses' }} · updated just now</div>
             </div>
+
+            <form method="GET" action="{{ route('dashboard') }}" class="flex items-center gap-2.5">
+                <select name="course" onchange="this.form.submit()"
+                    class="bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13.5px] text-ink focus:border-navy-light focus:outline-none">
+                    <option value="">All courses</option>
+                    @foreach ($courses as $course)
+                        <option value="{{ $course->id }}" @selected($selectedCourse?->id === $course->id)>{{ $course->code }} · {{ $course->name }}</option>
+                    @endforeach
+                </select>
+                <noscript><button type="submit" class="text-[13px] font-semibold text-navy">Apply</button></noscript>
+            </form>
         </div>
 
         <div class="mt-7 grid gap-5" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">

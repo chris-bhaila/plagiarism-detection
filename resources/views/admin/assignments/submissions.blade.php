@@ -15,7 +15,7 @@
                     @if ($assignment->due_date)
                         <span>Due {{ $assignment->due_date->format('j M Y, H:i') }}</span>
                     @endif
-                    <span>{{ $rows->count() }} of {{ $rows->count() }} shown</span>
+                    <span>{{ $rows->count() }} of {{ $totalCount }} shown</span>
                 </div>
             </div>
 
@@ -37,7 +37,7 @@
 
         <div class="mt-9 flex items-center gap-2.5 flex-wrap">
             @foreach ($filters as $f)
-                <a href="{{ route('admin.assignments.submissions', ['assignment' => $assignment, 'filter' => $f['key']]) }}"
+                <a href="{{ route('admin.assignments.submissions', array_merge(['assignment' => $assignment], request()->query(), ['filter' => $f['key']])) }}"
                    class="text-[13px] font-medium px-3.5 py-1.5 rounded-sm border {{ $activeFilter === $f['key'] ? 'bg-info-bg text-info-ink border-navy-light' : 'bg-white text-slate-900 border-slate-400 hover:border-slate-600' }}">
                     {{ $f['label'] }}
                 </a>
@@ -46,7 +46,15 @@
                 <a href="{{ route('admin.assignments.submissions.export', $assignment) }}" class="text-[12.5px] font-semibold text-navy hover:underline">
                     Export CSV
                 </a>
-                <span class="text-[12.5px] text-slate-800">Sorted by combined score, descending</span>
+                @foreach (['release' => 'Release all', 'hide' => 'Hide all'] as $action => $label)
+                    <form method="POST" action="{{ route('admin.assignments.similarity-release.bulk', $assignment) }}"
+                          onsubmit="return confirm('{{ $action === 'release' ? 'Show every student their similarity status for this assignment?' : 'Hide similarity status from every student for this assignment?' }}')">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="action" value="{{ $action }}">
+                        <button type="submit" class="text-[12.5px] font-semibold text-navy hover:underline">{{ $label }}</button>
+                    </form>
+                @endforeach
             </div>
 
             <div x-show="selected.length > 0" x-cloak x-transition class="ml-auto flex items-center gap-2.5">
@@ -65,6 +73,22 @@
                 </button>
             </div>
         </div>
+
+        <form method="GET" action="{{ route('admin.assignments.submissions', $assignment) }}" class="mt-4 flex flex-wrap gap-2.5">
+            <input type="hidden" name="filter" value="{{ $activeFilter }}">
+            <input type="text" name="search" value="{{ $search }}" placeholder="Student name or email"
+                class="flex-1 min-w-[200px] max-w-[320px] bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13.5px] text-ink focus:border-navy-light focus:outline-none">
+            <select name="sort" class="bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13.5px] text-ink focus:border-navy-light focus:outline-none">
+                <option value="score" @selected($sort === 'score')>Sort: combined score</option>
+                <option value="name" @selected($sort === 'name')>Sort: student name</option>
+                <option value="submitted" @selected($sort === 'submitted')>Sort: newest submitted</option>
+                <option value="words" @selected($sort === 'words')>Sort: word count</option>
+            </select>
+            <button type="submit" class="bg-navy hover:bg-navy-light border border-navy rounded-sm text-white text-[13.5px] font-semibold px-4 py-2">Apply</button>
+            @if ($search || $sort !== 'score')
+                <a href="{{ route('admin.assignments.submissions', ['assignment' => $assignment, 'filter' => $activeFilter]) }}" class="text-[13px] font-medium text-slate-800 hover:text-ink self-center">Clear</a>
+            @endif
+        </form>
 
         <form id="bulk-status-form" method="POST" action="{{ route('admin.similarity-reports.bulk-update-status') }}">
             @csrf
@@ -149,6 +173,10 @@
                                 {{ $row->submission->isSimilarityReleased() ? 'Released ✓' : 'Release to student' }}
                             </button>
                         </form>
+                        <a href="{{ route('admin.submissions.show', $row->submission) }}"
+                           class="inline-block text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light">
+                            View
+                        </a>
                         @if ($row->topReport)
                             <a href="{{ route('admin.similarity-reports.show', $row->topReport) }}"
                                class="inline-block text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light">
@@ -160,26 +188,12 @@
 
                 <div x-show="notesOpen" x-cloak x-transition class="px-6 pb-5 pt-1">
                     <div class="max-w-[560px] bg-slate-50 border border-slate-200 rounded-sm p-4">
-                        @forelse ($row->submission->notes as $note)
-                            <div class="pb-3 mb-3 border-b border-slate-200 last:border-b-0 last:pb-0 last:mb-0">
-                                <div class="text-[13px] text-ink leading-[1.6]">{{ $note->body }}</div>
-                                <div class="mt-1 text-[11.5px] text-slate-700">{{ $note->author->name }} &middot; {{ $note->created_at->format('j M Y, H:i') }}</div>
-                            </div>
-                        @empty
-                            <p class="text-[12.5px] text-slate-700">No notes yet.</p>
-                        @endforelse
-
-                        <form method="POST" action="{{ route('admin.submissions.notes.store', $row->submission) }}" class="mt-3 flex items-start gap-2">
-                            @csrf
-                            <textarea name="body" rows="2" placeholder="Add a follow-up note for this student…" required
-                                class="flex-1 box-border bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13px] text-ink focus:border-navy-light focus:outline-none"></textarea>
-                            <x-primary-button class="py-2">Add</x-primary-button>
-                        </form>
+                        @include('partials.note-thread', ['submission' => $row->submission, 'prefix' => 'admin.'])
                     </div>
                 </div>
                 </div>
             @empty
-                <div class="px-6 py-10 text-center text-slate-800 text-sm">No submissions match this filter.</div>
+                <div class="px-6 py-10 text-center text-slate-800 text-sm">{{ $search ? 'No submissions match this search.' : 'No submissions match this filter.' }}</div>
             @endforelse
 
             <div class="px-6 py-3.5 text-[12.5px] text-slate-800">Showing {{ $rows->count() }} submission(s)</div>

@@ -139,7 +139,7 @@ class AssignmentController extends Controller
             default => $rows,
         };
 
-        $rows = $filtered->sortByDesc('score')->values();
+        $rows = $this->searchAndSortRows($filtered, $request);
 
         $filters = [
             ['key' => 'all', 'label' => 'All '.$totalCount],
@@ -155,6 +155,9 @@ class AssignmentController extends Controller
             'pendingCount' => $pendingCount,
             'medianScore' => $medianScore,
             'activeFilter' => $filter,
+            'totalCount' => $totalCount,
+            'search' => trim((string) $request->query('search', '')),
+            'sort' => in_array($request->query('sort'), ['name', 'submitted', 'words'], true) ? $request->query('sort') : 'score',
             'filters' => $filters,
         ]);
     }

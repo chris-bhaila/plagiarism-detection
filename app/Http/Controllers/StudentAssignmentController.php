@@ -44,7 +44,35 @@ class StudentAssignmentController extends Controller
             'submission' => $latestByAssignment->get($assignment->id),
         ])->sortBy(fn ($row) => $row->assignment->due_date ?? $undated)->values();
 
-        return view('student.assignments.index', ['rows' => $rows]);
+        $search = trim((string) $request->query('search', ''));
+        $status = $request->query('status');
+        $status = in_array($status, ['submitted', 'not_submitted', 'overdue'], true) ? $status : null;
+
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $rows = $rows->filter(fn ($row) => str_contains(
+                mb_strtolower($row->assignment->title.' '.($row->assignment->course->code ?? '').' '.($row->assignment->course->name ?? '')),
+                $needle,
+            ));
+        }
+
+        if ($status !== null) {
+            $rows = $rows->filter(function ($row) use ($status) {
+                $overdue = ! $row->submission && $row->assignment->due_date && $row->assignment->due_date->isPast();
+
+                return match ($status) {
+                    'submitted' => (bool) $row->submission,
+                    'overdue' => $overdue,
+                    'not_submitted' => ! $row->submission && ! $overdue,
+                };
+            });
+        }
+
+        return view('student.assignments.index', [
+            'rows' => $rows->values(),
+            'search' => $search,
+            'status' => $status,
+        ]);
     }
 
     /**

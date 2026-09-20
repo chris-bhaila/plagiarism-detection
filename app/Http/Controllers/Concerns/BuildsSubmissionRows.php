@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Concerns;
 use App\Models\Assignment;
 use App\Models\SimilarityReport;
 use App\Repositories\Contracts\SubmissionRepositoryInterface;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 /**
@@ -43,5 +44,33 @@ trait BuildsSubmissionRows
                     'band' => SimilarityReport::scoreBand($score, $threshold),
                 ];
             });
+    }
+
+    /**
+     * Apply the submissions page's ?search= (student name/email) and
+     * ?sort= (score|name|submitted|words, default score, highest first).
+     *
+     * @param  Collection<int, object>  $rows
+     * @return Collection<int, object>
+     */
+    protected function searchAndSortRows(Collection $rows, Request $request): Collection
+    {
+        $search = mb_strtolower(trim((string) $request->query('search', '')));
+
+        if ($search !== '') {
+            $rows = $rows->filter(fn ($r) => str_contains(
+                mb_strtolower($r->submission->student->name.' '.$r->submission->student->email),
+                $search,
+            ));
+        }
+
+        $sorted = match ($request->query('sort')) {
+            'name' => $rows->sortBy(fn ($r) => mb_strtolower($r->submission->student->name)),
+            'submitted' => $rows->sortByDesc(fn ($r) => $r->submission->submitted_at),
+            'words' => $rows->sortByDesc('wordCount'),
+            default => $rows->sortByDesc('score'),
+        };
+
+        return $sorted->values();
     }
 }

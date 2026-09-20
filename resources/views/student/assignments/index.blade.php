@@ -2,7 +2,29 @@
     <div class="pt-10 pb-20">
         <h1 class="text-[28px] font-semibold tracking-tight">My Assignments</h1>
 
-        <div class="mt-7 bg-white border border-slate-300 rounded-sm">
+        <form method="GET" action="{{ route('assignments.index') }}" class="mt-7 flex flex-wrap gap-2.5">
+            <input type="text" name="search" value="{{ $search }}" placeholder="Title, course name or code"
+                class="flex-1 min-w-[200px] max-w-[320px] bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13.5px] text-ink focus:border-navy-light focus:outline-none">
+
+            <select name="status" class="bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13.5px] text-ink focus:border-navy-light focus:outline-none">
+                <option value="">All statuses</option>
+                <option value="submitted" @selected($status === 'submitted')>Submitted</option>
+                <option value="not_submitted" @selected($status === 'not_submitted')>Not submitted</option>
+                <option value="overdue" @selected($status === 'overdue')>Overdue</option>
+            </select>
+
+            <button type="submit" class="bg-navy hover:bg-navy-light border border-navy rounded-sm text-white text-[13.5px] font-semibold px-4 py-2">
+                Filter
+            </button>
+
+            @if ($search || $status)
+                <a href="{{ route('assignments.index') }}" class="text-[13px] font-medium text-slate-800 hover:text-ink self-center">
+                    Clear
+                </a>
+            @endif
+        </form>
+
+        <div class="mt-5 bg-white border border-slate-300 rounded-sm">
             @forelse ($rows as $row)
                 @php
                     $assignment = $row->assignment;
@@ -33,7 +55,9 @@
                     </div>
                 </div>
             @empty
-                <p class="px-6 py-10 text-center text-sm text-slate-800">No assignments yet.</p>
+                <p class="px-6 py-10 text-center text-sm text-slate-800">
+                    {{ ($search || $status) ? 'No assignments match these filters.' : 'No assignments yet.' }}
+                </p>
             @endforelse
         </div>
     </div>

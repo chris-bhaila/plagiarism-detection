@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Submission;
+use App\Models\SubmissionNote;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -10,8 +11,8 @@ class SubmissionNoteController extends Controller
 {
     /**
      * Add a follow-up note to a submission — only the course's own
-     * teacher may. Teacher/admin-facing only; no student-visible surface
-     * yet (deliberately deferred).
+     * teacher may. Students can read notes on their own receipt page but
+     * never author them.
      */
     public function store(Request $request, Submission $submission): RedirectResponse
     {
@@ -27,5 +28,37 @@ class SubmissionNoteController extends Controller
         ]);
 
         return redirect()->back()->with('status', 'Note added.');
+    }
+
+    /**
+     * Edit a note — only its author, and only while they still teach the
+     * course (mirrors store()'s ownership check).
+     */
+    public function update(Request $request, SubmissionNote $submissionNote): RedirectResponse
+    {
+        $this->authorizeOwnNote($request, $submissionNote);
+
+        $validated = $request->validate([
+            'body' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $submissionNote->update(['body' => $validated['body']]);
+
+        return redirect()->back()->with('status', 'Note updated.');
+    }
+
+    public function destroy(Request $request, SubmissionNote $submissionNote): RedirectResponse
+    {
+        $this->authorizeOwnNote($request, $submissionNote);
+
+        $submissionNote->delete();
+
+        return redirect()->back()->with('status', 'Note deleted.');
+    }
+
+    protected function authorizeOwnNote(Request $request, SubmissionNote $note): void
+    {
+        abort_if($note->submission->assignment->course->teacher_id !== $request->user()->id, 403);
+        abort_if($note->author_id !== $request->user()->id, 403);
     }
 }

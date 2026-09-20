@@ -132,6 +132,6 @@ class User extends Authenticatable
      */
     public function homeRouteName(): string
     {
-        return $this->isStudent() ? 'assignments.index' : 'dashboard';
+        return $this->isStudent() ? 'student.dashboard' : 'dashboard';
     }
 }

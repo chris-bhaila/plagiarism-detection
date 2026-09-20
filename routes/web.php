@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminCourseController;
 use App\Http\Controllers\AdminFacultyController;
 use App\Http\Controllers\AdminSemesterController;
 use App\Http\Controllers\AdminSimilarityReportController;
+use App\Http\Controllers\AdminSubmissionController;
 use App\Http\Controllers\AdminSubmissionNoteController;
 use App\Http\Controllers\AdminSubmissionSimilarityReleaseController;
 use App\Http\Controllers\AdminUserController;
@@ -16,6 +17,9 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SimilarityReportController;
 use App\Http\Controllers\StudentAssignmentController;
+use App\Http\Controllers\StudentCourseController;
+use App\Http\Controllers\StudentDashboardController;
+use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\SubmissionNoteController;
 use App\Http\Controllers\SubmissionSimilarityReleaseController;
 use App\Models\User;
@@ -47,6 +51,12 @@ Route::middleware(['auth', 'role:'.User::ROLE_STUDENT])->group(function () {
 
     Route::post('/complete-profile', [ProfileController::class, 'completeStore'])
         ->name('profile.complete.store');
+
+    Route::get('/home', [StudentDashboardController::class, 'index'])
+        ->name('student.dashboard');
+
+    Route::get('/my-courses', [StudentCourseController::class, 'index'])
+        ->name('student.courses.index');
 
     Route::get('/assignments', [StudentAssignmentController::class, 'index'])
         ->name('assignments.index');
@@ -87,8 +97,20 @@ Route::middleware(['auth', 'role:'.User::ROLE_TEACHER])->group(function () {
     Route::get('/assignments/{assignment}/submissions/export', [AssignmentController::class, 'exportSubmissions'])
         ->name('assignments.submissions.export');
 
+    Route::get('/submissions/{submission}', [SubmissionController::class, 'show'])
+        ->name('submissions.show');
+
     Route::post('/submissions/{submission}/notes', [SubmissionNoteController::class, 'store'])
         ->name('submissions.notes.store');
+
+    Route::patch('/submission-notes/{submissionNote}', [SubmissionNoteController::class, 'update'])
+        ->name('submissions.notes.update');
+
+    Route::delete('/submission-notes/{submissionNote}', [SubmissionNoteController::class, 'destroy'])
+        ->name('submissions.notes.destroy');
+
+    Route::patch('/assignments/{assignment}/similarity-release', [SubmissionSimilarityReleaseController::class, 'bulk'])
+        ->name('assignments.similarity-release.bulk');
 
     Route::patch('/submissions/{submission}/similarity-release', [SubmissionSimilarityReleaseController::class, 'update'])
         ->name('submissions.similarity-release.update');
@@ -192,8 +214,20 @@ Route::middleware(['auth', 'role:'.User::ROLE_ADMIN])->group(function () {
     Route::get('/admin/assignments/{assignment}/submissions/export', [AdminAssignmentController::class, 'exportSubmissions'])
         ->name('admin.assignments.submissions.export');
 
+    Route::get('/admin/submissions/{submission}', [AdminSubmissionController::class, 'show'])
+        ->name('admin.submissions.show');
+
     Route::post('/admin/submissions/{submission}/notes', [AdminSubmissionNoteController::class, 'store'])
         ->name('admin.submissions.notes.store');
+
+    Route::patch('/admin/submission-notes/{submissionNote}', [AdminSubmissionNoteController::class, 'update'])
+        ->name('admin.submissions.notes.update');
+
+    Route::delete('/admin/submission-notes/{submissionNote}', [AdminSubmissionNoteController::class, 'destroy'])
+        ->name('admin.submissions.notes.destroy');
+
+    Route::patch('/admin/assignments/{assignment}/similarity-release', [AdminSubmissionSimilarityReleaseController::class, 'bulk'])
+        ->name('admin.assignments.similarity-release.bulk');
 
     Route::patch('/admin/submissions/{submission}/similarity-release', [AdminSubmissionSimilarityReleaseController::class, 'update'])
         ->name('admin.submissions.similarity-release.update');

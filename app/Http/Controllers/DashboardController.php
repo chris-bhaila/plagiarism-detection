@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Assignment;
+use App\Models\Course;
 use App\Models\SimilarityReport;
 use App\Models\Submission;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
@@ -15,9 +17,11 @@ class DashboardController extends Controller
      * assignment, lexical vs semantic flag breakdown. Scoped to the
      * logged-in teacher's own courses; admins see the whole institution.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $courseIds = $this->scopedCourseIds();
+        $courses = $this->selectableCourses();
+        $selectedCourse = $courses->firstWhere('id', $request->integer('course'));
+        $courseIds = $this->scopedCourseIds($selectedCourse);
 
         $reports = SimilarityReport::with(['submissionA.assignment.course', 'submissionB.assignment'])
             ->when($courseIds !== null, fn ($query) => $query->whereHas(
@@ -48,6 +52,8 @@ class DashboardController extends Controller
         $topAssignments = $this->mostFlaggedAssignments($courseIds);
 
         return view('dashboard.index', [
+            'courses' => $courses,
+            'selectedCourse' => $selectedCourse,
             'totalSubmissions' => $totalSubmissions,
             'totalAssignments' => $totalAssignments,
             'flaggedCount' => $flaggedCount,
@@ -94,13 +100,32 @@ class DashboardController extends Controller
     }
 
     /**
-     * The logged-in user's own course IDs to scope the dashboard to, or
-     * null for "no scoping" (admins see every course in the system).
+     * Courses the logged-in user may filter the dashboard by: a teacher's
+     * own, or every course for an admin.
+     *
+     * @return Collection<int, Course>
+     */
+    protected function selectableCourses(): Collection
+    {
+        $user = auth()->user();
+
+        return ($user->isTeacher() ? $user->coursesTaught() : Course::query())->orderBy('code')->get();
+    }
+
+    /**
+     * The course IDs to scope the dashboard to: the chosen course if any
+     * (already restricted to selectableCourses()), otherwise all of a
+     * teacher's own courses, or null for "no scoping" (admins see every
+     * course in the system).
      *
      * @return ?array<int, int>
      */
-    protected function scopedCourseIds(): ?array
+    protected function scopedCourseIds(?Course $selected): ?array
     {
+        if ($selected) {
+            return [$selected->id];
+        }
+
         $user = auth()->user();
 
         return $user->isTeacher() ? $user->coursesTaught()->pluck('id')->all() : null;

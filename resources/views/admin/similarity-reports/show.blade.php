@@ -74,21 +74,7 @@
                                 </div>
 
                                 <div x-show="notesOpen" x-cloak x-transition class="mt-3">
-                                    @forelse ($submission->notes as $note)
-                                        <div class="pb-3 mb-3 border-b border-slate-200 last:border-b-0 last:pb-0 last:mb-0">
-                                            <div class="text-[13px] text-ink leading-[1.6]">{{ $note->body }}</div>
-                                            <div class="mt-1 text-[11.5px] text-slate-700">{{ $note->author->name }} &middot; {{ $note->created_at->format('j M Y, H:i') }}</div>
-                                        </div>
-                                    @empty
-                                        <p class="text-[12.5px] text-slate-700">No notes yet.</p>
-                                    @endforelse
-
-                                    <form method="POST" action="{{ route('admin.submissions.notes.store', $submission) }}" class="mt-3 flex items-start gap-2">
-                                        @csrf
-                                        <textarea name="body" rows="2" placeholder="Add a follow-up note for {{ $submission->student->name }}…" required
-                                            class="flex-1 box-border bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13px] text-ink focus:border-navy-light focus:outline-none"></textarea>
-                                        <x-primary-button class="py-2">Add</x-primary-button>
-                                    </form>
+                                    @include('partials.note-thread', ['submission' => $submission, 'prefix' => 'admin.'])
                                 </div>
                             </div>
                         </div>

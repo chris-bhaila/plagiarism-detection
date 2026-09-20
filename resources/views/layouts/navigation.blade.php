@@ -18,6 +18,12 @@
         <!-- Navigation Links -->
         <div class="hidden sm:flex gap-1 self-stretch">
             @if (Auth::user()->isStudent())
+                <x-nav-tab :href="route('student.dashboard')" :active="request()->routeIs('student.dashboard')">
+                    Dashboard
+                </x-nav-tab>
+                <x-nav-tab :href="route('student.courses.index')" :active="request()->routeIs('student.courses.*')">
+                    My Courses
+                </x-nav-tab>
                 <x-nav-tab :href="route('assignments.index')" :active="request()->routeIs('assignments.*')">
                     My Assignments
                 </x-nav-tab>
@@ -80,6 +86,12 @@
     <div x-show="open" x-cloak x-transition class="sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
             @if (Auth::user()->isStudent())
+                <x-responsive-nav-link :href="route('student.dashboard')" :active="request()->routeIs('student.dashboard')">
+                    Dashboard
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('student.courses.index')" :active="request()->routeIs('student.courses.*')">
+                    My Courses
+                </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('assignments.index')" :active="request()->routeIs('assignments.*')">
                     My Assignments
                 </x-responsive-nav-link>
