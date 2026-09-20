@@ -2,62 +2,58 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Assignment;
-use App\Models\SimilarityReport;
+use App\Http\Controllers\Concerns\BuildsStudentAssignmentRows;
 use App\Repositories\Contracts\AssignmentRepositoryInterface;
+use App\Repositories\Contracts\CourseRepositoryInterface;
+use App\Repositories\Contracts\SubmissionRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class StudentDashboardController extends Controller
 {
-    public function __construct(protected AssignmentRepositoryInterface $assignments) {}
+    use BuildsStudentAssignmentRows;
+
+    public function __construct(
+        protected CourseRepositoryInterface $courses,
+        protected AssignmentRepositoryInterface $assignments,
+        protected SubmissionRepositoryInterface $submissions,
+    ) {}
 
     /**
-     * Student home: at-a-glance counts, what needs attention (overdue or
-     * due soonest and not yet submitted), and recent submissions. Check
-     * status on a recent submission only appears once released, matching
-     * the receipt page.
+     * A student's home page: unlike the teacher/admin analytics dashboard
+     * (DashboardController — flag rates, scores, nothing a student should
+     * see), this is a personal snapshot — what's due, what's new — built
+     * from the same assignment+submission rows as the assignments list and
+     * course detail page (see BuildsStudentAssignmentRows).
      */
     public function index(Request $request): View
     {
         $student = $request->user();
 
-        $assignments = $this->assignments->forStudent($student);
-        $submissions = $student->submissions()
-            ->with(['assignment.course', 'notes'])
-            ->orderByDesc('submitted_at')
-            ->get();
+        $courses = $this->courses->forStudent($student);
+        $rows = $this->buildStudentAssignmentRows($this->submissions, $student, $this->assignments->forStudent($student));
 
-        $submittedIds = $submissions->pluck('assignment_id')->unique();
-        $outstanding = $assignments->reject(fn (Assignment $a) => $submittedIds->contains($a->id));
+        $submittedRows = $rows->filter(fn ($row) => $row->submission)->values();
+        $notSubmittedRows = $rows->filter(fn ($row) => ! $row->submission)->values();
+        $overdueCount = $notSubmittedRows->filter(
+            fn ($row) => $row->assignment->due_date && $row->assignment->due_date->isPast()
+        )->count();
 
-        $overdue = $outstanding
-            ->filter(fn (Assignment $a) => $a->due_date && $a->due_date->isPast())
-            ->sortBy('due_date')
-            ->values();
+        // Rows are already sorted by due date (undated pushed last) by
+        // buildStudentAssignmentRows, so this naturally surfaces overdue
+        // assignments first, then the soonest-due ones.
+        $dueSoonRows = $notSubmittedRows->take(5);
 
-        $upcoming = $outstanding
-            ->filter(fn (Assignment $a) => ! $a->due_date || $a->due_date->isFuture())
-            ->sortBy(fn (Assignment $a) => $a->due_date ?? now()->addCentury())
-            ->take(5)
-            ->values();
-
-        $recent = $submissions->unique('assignment_id')->take(5)->map(fn ($submission) => (object) [
-            'submission' => $submission,
-            'label' => $submission->isSimilarityReleased()
-                ? SimilarityReport::studentFacingLabel($submission->topSimilarityReport()?->status)
-                : null,
-        ])->values();
+        $unseenRows = $submittedRows->filter(fn ($row) => $row->submission->hasUnseenActivity())->values();
 
         return view('student.dashboard', [
-            'student' => $student,
-            'courseCount' => $student->enrolledCourses()->count(),
-            'assignmentCount' => $assignments->count(),
-            'submittedCount' => $assignments->filter(fn (Assignment $a) => $submittedIds->contains($a->id))->count(),
-            'overdue' => $overdue,
-            'upcoming' => $upcoming,
-            'recent' => $recent,
-            'noteCount' => $submissions->sum(fn ($submission) => $submission->notes->count()),
+            'coursesCount' => $courses->count(),
+            'totalAssignments' => $rows->count(),
+            'submittedCount' => $submittedRows->count(),
+            'overdueCount' => $overdueCount,
+            'unseenCount' => $unseenRows->count(),
+            'dueSoonRows' => $dueSoonRows,
+            'unseenRows' => $unseenRows->take(5),
         ]);
     }
 }

@@ -34,7 +34,10 @@ class SubmissionRepository implements SubmissionRepositoryInterface
 
     public function forStudent(User $student): Collection
     {
-        return $student->submissions()->with('assignment')->get();
+        // 'notes' is eager-loaded here (not just 'assignment') so the
+        // assignments list can call Submission::hasUnseenActivity() per
+        // row without an N+1 query per submission.
+        return $student->submissions()->with(['assignment', 'notes'])->get();
     }
 
     public function create(array $data): Submission

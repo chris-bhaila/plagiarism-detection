@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="pt-10 pb-20" x-data="{ creating: {{ $errors->any() ? 'true' : 'false' }} }">
+    <div class="pt-10 pb-20" x-data="{ creating: {{ $errors->any() ? 'true' : 'false' }}, submitting: false }">
 
         <div class="flex items-end justify-between gap-6 flex-wrap">
             <div>
@@ -20,7 +20,7 @@
                 </div>
 
                 <div x-show="creating" x-cloak x-transition class="mt-4 bg-white border border-slate-300 rounded-sm p-6">
-                    <form method="POST" action="{{ route('assignments.store') }}" class="grid gap-5" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route('assignments.store') }}" class="grid gap-5" enctype="multipart/form-data" @submit="submitting = true">
                         @csrf
                         <input type="hidden" name="course_id" value="{{ $course->id }}">
 
@@ -61,7 +61,7 @@
                         </div>
 
                         <div>
-                            <x-primary-button>Create assignment</x-primary-button>
+                            <x-primary-button loading="submitting">Create assignment</x-primary-button>
                         </div>
                     </form>
                 </div>

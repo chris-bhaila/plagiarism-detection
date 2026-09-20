@@ -127,8 +127,11 @@ class User extends Authenticatable
     }
 
     /**
-     * The named route this user should land on after login, since the
-     * analytics dashboard is restricted to teachers/admins.
+     * The named route this user should land on after login. Students get
+     * their own dashboard (student.dashboard) — a personal snapshot, not
+     * the teacher/admin analytics dashboard (route `dashboard`), which is
+     * restricted to those roles and shows data (flag rates, scores) a
+     * student shouldn't see.
      */
     public function homeRouteName(): string
     {

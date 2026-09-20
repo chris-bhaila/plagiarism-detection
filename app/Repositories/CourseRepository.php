@@ -37,6 +37,15 @@ class CourseRepository implements CourseRepositoryInterface
             ->get();
     }
 
+    public function forStudent(User $student): Collection
+    {
+        return $student->enrolledCourses()
+            ->with('teacher')
+            ->withCount('assignments')
+            ->orderBy('name')
+            ->get();
+    }
+
     public function create(array $data): Course
     {
         return Course::create($data);

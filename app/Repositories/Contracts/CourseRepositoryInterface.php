@@ -26,6 +26,15 @@ interface CourseRepositoryInterface
     public function forTeacher(User $teacher, ?string $search = null): Collection;
 
     /**
+     * Courses the given student is auto-enrolled in (every course sharing
+     * their semester), with the teacher relation and assignment count
+     * pre-loaded for a list view.
+     *
+     * @return Collection<int, Course>
+     */
+    public function forStudent(User $student): Collection;
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public function create(array $data): Course;

@@ -46,17 +46,20 @@ Route::middleware('auth')->group(function () {
 
 // Student routes
 Route::middleware(['auth', 'role:'.User::ROLE_STUDENT])->group(function () {
+    Route::get('/my-dashboard', [StudentDashboardController::class, 'index'])
+        ->name('student.dashboard');
+
     Route::get('/complete-profile', [ProfileController::class, 'completeForm'])
         ->name('profile.complete');
 
     Route::post('/complete-profile', [ProfileController::class, 'completeStore'])
         ->name('profile.complete.store');
 
-    Route::get('/home', [StudentDashboardController::class, 'index'])
-        ->name('student.dashboard');
-
     Route::get('/my-courses', [StudentCourseController::class, 'index'])
         ->name('student.courses.index');
+
+    Route::get('/my-courses/{course}', [StudentCourseController::class, 'show'])
+        ->name('student.courses.show');
 
     Route::get('/assignments', [StudentAssignmentController::class, 'index'])
         ->name('assignments.index');

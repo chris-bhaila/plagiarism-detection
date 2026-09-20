@@ -100,7 +100,8 @@
             <div x-data="{
                     words: 0,
                     ack: true,
-                    get canSubmit() { return this.ack && this.words > 0 },
+                    submitting: false,
+                    get canSubmit() { return this.ack && this.words > 0 && ! this.submitting },
                     updateWords(text) {
                         const trimmed = text.trim();
                         this.words = trimmed ? trimmed.split(/\s+/).length : 0;
@@ -134,7 +135,7 @@
                     Your text is checked against institutional submissions and other sources. A similarity score is not a finding of misconduct — your instructor reviews every flagged report before any decision.
                 </p>
 
-                <form method="POST" action="{{ route('assignments.submit', $assignment) }}" class="mt-10 grid gap-6">
+                <form method="POST" action="{{ route('assignments.submit', $assignment) }}" class="mt-10 grid gap-6" @submit="submitting = true">
                     @csrf
 
                     <div>
@@ -159,8 +160,12 @@
                     <div class="flex items-center gap-4">
                         <button type="submit" :disabled="!canSubmit"
                             :class="canSubmit ? 'bg-navy hover:bg-navy-light cursor-pointer opacity-100' : 'bg-slate-600 cursor-not-allowed opacity-70'"
-                            class="border-none rounded-sm text-white text-[14.5px] font-semibold px-5 py-3">
-                            Submit assignment
+                            class="inline-flex items-center gap-2 border-none rounded-sm text-white text-[14.5px] font-semibold px-5 py-3 transition-colors duration-150">
+                            <svg x-show="submitting" class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <span x-text="submitting ? 'Submitting…' : 'Submit assignment'"></span>
                         </button>
                     </div>
                 </form>

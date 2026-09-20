@@ -20,6 +20,7 @@ class Submission extends Model
         'text_content',
         'submitted_at',
         'similarity_released_at',
+        'viewed_at',
     ];
 
     protected function casts(): array
@@ -27,6 +28,7 @@ class Submission extends Model
         return [
             'submitted_at' => 'datetime',
             'similarity_released_at' => 'datetime',
+            'viewed_at' => 'datetime',
         ];
     }
 
@@ -107,5 +109,55 @@ class Submission extends Model
     public function isSimilarityReleased(): bool
     {
         return $this->similarity_released_at !== null;
+    }
+
+    /**
+     * Whether something happened on this submission (a similarity release,
+     * or a new note) since the student last opened its receipt page — used
+     * to show a "New" indicator on the assignments list so the student
+     * doesn't have to reopen every assignment to notice. Uses the loaded
+     * `notes` relation when available rather than querying, since the
+     * assignments-list caller eager-loads it for exactly this.
+     */
+    public function hasUnseenActivity(): bool
+    {
+        return $this->hasUnseenRelease() || $this->hasUnseenNote();
+    }
+
+    /**
+     * Short label for what's new, for panels (like the student dashboard's
+     * "Recent feedback" list) that want to say more than just "something
+     * changed". Null when there's nothing unseen.
+     */
+    public function unseenActivitySummary(): ?string
+    {
+        return match (true) {
+            $this->hasUnseenNote() && $this->hasUnseenRelease() => 'New feedback and similarity status',
+            $this->hasUnseenNote() => 'New feedback from your instructor',
+            $this->hasUnseenRelease() => 'Similarity status released',
+            default => null,
+        };
+    }
+
+    protected function hasUnseenRelease(): bool
+    {
+        return $this->similarity_released_at !== null
+            && (! $this->viewed_at || $this->similarity_released_at->gt($this->viewed_at));
+    }
+
+    protected function hasUnseenNote(): bool
+    {
+        $latestNoteAt = $this->notes->max('created_at');
+
+        return $latestNoteAt !== null && (! $this->viewed_at || $latestNoteAt->gt($this->viewed_at));
+    }
+
+    /**
+     * Record that the student has now seen this submission's current
+     * state — called when they open its receipt page.
+     */
+    public function markViewed(): void
+    {
+        $this->forceFill(['viewed_at' => now()])->save();
     }
 }

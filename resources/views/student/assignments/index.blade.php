@@ -3,7 +3,7 @@
         <h1 class="text-[28px] font-semibold tracking-tight">My Assignments</h1>
 
         <form method="GET" action="{{ route('assignments.index') }}" class="mt-7 flex flex-wrap gap-2.5">
-            <input type="text" name="search" value="{{ $search }}" placeholder="Title, course name or code"
+            <input type="text" name="search" value="{{ $search }}" placeholder="Title or course code"
                 class="flex-1 min-w-[200px] max-w-[320px] bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13.5px] text-ink focus:border-navy-light focus:outline-none">
 
             <select name="status" class="bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13.5px] text-ink focus:border-navy-light focus:outline-none">
@@ -41,6 +41,9 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-3.5">
+                        @if ($row->submission && $row->submission->hasUnseenActivity())
+                            <span class="text-[11px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded-sm bg-info-bg text-info-ink border border-navy-light" title="Your instructor left a note or released a similarity status since you last checked">New</span>
+                        @endif
                         @if ($row->submission)
                             <span class="text-[11px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded-sm bg-ok-bg text-ok-deep border border-ok-border">Submitted</span>
                         @elseif ($isOverdue)
