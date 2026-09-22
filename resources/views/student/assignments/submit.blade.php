@@ -99,9 +99,10 @@
             {{-- Not submitted: form state --}}
             <div x-data="{
                     words: 0,
+                    fileName: '',
                     ack: true,
                     submitting: false,
-                    get canSubmit() { return this.ack && this.words > 0 && ! this.submitting },
+                    get canSubmit() { return this.ack && (this.words > 0 || this.fileName !== '') && ! this.submitting },
                     updateWords(text) {
                         const trimmed = text.trim();
                         this.words = trimmed ? trimmed.split(/\s+/).length : 0;
@@ -135,8 +136,18 @@
                     Your text is checked against institutional submissions and other sources. A similarity score is not a finding of misconduct — your instructor reviews every flagged report before any decision.
                 </p>
 
-                <form method="POST" action="{{ route('assignments.submit', $assignment) }}" class="mt-10 grid gap-6" @submit="submitting = true">
+                <form method="POST" action="{{ route('assignments.submit', $assignment) }}" class="mt-10 grid gap-6" enctype="multipart/form-data" @submit="submitting = true">
                     @csrf
+
+                    <div>
+                        <label for="document" class="block mb-2 text-[13px] font-semibold">Upload your work <span class="font-normal text-slate-800">(.docx, up to 10 MB)</span></label>
+                        <input id="document" type="file" name="document"
+                            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            @change="fileName = $event.target.files[0]?.name ?? ''"
+                            class="block w-full text-[14px] text-ink bg-white border border-slate-500 rounded-sm p-2.5 file:mr-4 file:rounded-sm file:border-0 file:bg-navy file:px-4 file:py-2 file:text-[13.5px] file:font-semibold file:text-white hover:file:bg-navy-light">
+                        <x-input-error :messages="$errors->get('document')" class="mt-2" />
+                        <p class="mt-3 text-[13px] text-slate-800">Or paste your text below — an uploaded file takes priority if you provide both.</p>
+                    </div>
 
                     <div>
                         <div class="flex justify-between items-baseline mb-2">
@@ -148,7 +159,7 @@
                             @input="updateWords($event.target.value)"
                             placeholder="Paste or type your assignment text here."
                             class="w-full box-sizing-border bg-white border border-slate-500 rounded-sm p-3.5 font-sans text-[14.5px] leading-[1.7] text-ink focus:border-navy-light focus:outline-none"
-                            required>{{ old('text_content') }}</textarea>
+                            >{{ old('text_content') }}</textarea>
                         <x-input-error :messages="$errors->get('text_content')" class="mt-2" />
                     </div>
 

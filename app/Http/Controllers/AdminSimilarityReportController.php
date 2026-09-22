@@ -35,7 +35,7 @@ class AdminSimilarityReportController extends Controller
             ->values();
 
         $shingles = $similarityReport->matched_shingles ?? [];
-        $matchedWords = collect($shingles)->sum(fn (array $s) => str_word_count($s['text'] ?? ''));
+        $matchedWords = collect($shingles)->sum(fn ($s) => str_word_count(is_array($s) ? ($s['text'] ?? '') : (string) $s));
         $totalWords = str_word_count(strip_tags($similarityReport->submissionA->text_content));
 
         return view('admin.similarity-reports.show', [

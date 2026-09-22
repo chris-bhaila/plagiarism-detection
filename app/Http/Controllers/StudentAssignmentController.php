@@ -7,6 +7,7 @@ use App\Jobs\CheckSubmissionSimilarity;
 use App\Models\Assignment;
 use App\Repositories\Contracts\AssignmentRepositoryInterface;
 use App\Repositories\Contracts\SubmissionRepositoryInterface;
+use App\Services\DocxTextExtractor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -89,18 +90,31 @@ class StudentAssignmentController extends Controller
     /**
      * Handle a student's submission for an assignment.
      */
-    public function submit(Request $request, Assignment $assignment): RedirectResponse
+    public function submit(Request $request, Assignment $assignment, DocxTextExtractor $extractor): RedirectResponse
     {
         $this->authorizeEnrollment($request, $assignment);
 
         $validated = $request->validate([
-            'text_content' => ['required', 'string'],
+            'text_content' => ['required_without:document', 'nullable', 'string'],
+            'document' => ['nullable', 'file', 'mimes:docx', 'max:10240'],
         ]);
+
+        $text = $validated['text_content'] ?? null;
+
+        // An uploaded .docx wins over pasted text: its extracted text is
+        // what gets stored and similarity-checked.
+        if ($request->hasFile('document')) {
+            $text = $extractor->extract($request->file('document')->getRealPath());
+
+            if ($text === null || $text === '') {
+                return back()->withErrors(['document' => 'We could not read any text from that file. Upload a .docx with text in it, or paste your text instead.'])->withInput();
+            }
+        }
 
         $submission = $this->submissions->create([
             'assignment_id' => $assignment->id,
             'student_id' => $request->user()->id,
-            'text_content' => $validated['text_content'],
+            'text_content' => $text,
             'submitted_at' => now(),
         ]);
 

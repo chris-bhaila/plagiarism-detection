@@ -68,4 +68,18 @@ class SimilarityReportAuthorizationTest extends TestCase
 
         $this->assertSame(SimilarityReport::STATUS_CONFIRMED, $report->fresh()->status);
     }
+
+    public function test_report_page_renders_with_plain_string_matched_shingles(): void
+    {
+        // The similarity service returns matched_shingles as a flat array of
+        // phrase strings (not {text,type} objects) — the page must handle both.
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER]);
+        $report = $this->reportFor($teacher);
+        $report->update(['matched_shingles' => ['shared public debate', 'open microphones needs']]);
+
+        $this->actingAs($teacher)->get(route('similarity-reports.show', $report))->assertOk();
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->actingAs($admin)->get(route('admin.similarity-reports.show', $report))->assertOk();
+    }
 }
