@@ -141,15 +141,20 @@
 
                     <div>
                         <label for="document" class="block mb-2 text-[13px] font-semibold">Upload your work <span class="font-normal text-slate-800">(.docx, up to 10 MB)</span></label>
-                        <input id="document" type="file" name="document"
+                        <input id="document" type="file" name="document" x-ref="document"
                             accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                             @change="fileName = $event.target.files[0]?.name ?? ''"
                             class="block w-full text-[14px] text-ink bg-white border border-slate-500 rounded-sm p-2.5 file:mr-4 file:rounded-sm file:border-0 file:bg-navy file:px-4 file:py-2 file:text-[13.5px] file:font-semibold file:text-white hover:file:bg-navy-light">
                         <x-input-error :messages="$errors->get('document')" class="mt-2" />
-                        <p class="mt-3 text-[13px] text-slate-800">Or paste your text below — an uploaded file takes priority if you provide both.</p>
+                        <p class="mt-3 text-[13px] text-slate-800" x-show="!fileName">Or paste your text below — an uploaded file takes priority if you provide both.</p>
+                        <p class="mt-3 text-[13px] text-warn-deep" x-show="fileName" x-cloak>
+                            <span x-text="'“' + fileName + '” selected — the pasted text below will be ignored.'"></span>
+                            <button type="button" class="ml-1 font-semibold underline"
+                                @click="fileName = ''; $refs.document.value = ''">Remove file, paste text instead</button>
+                        </p>
                     </div>
 
-                    <div>
+                    <div :class="fileName ? 'opacity-50' : ''">
                         <div class="flex justify-between items-baseline mb-2">
                             <label for="text_content" class="text-[13px] font-semibold">Assignment text</label>
                             <span class="text-[12.5px] text-slate-800 tabular-nums" x-text="words.toLocaleString() + ' words'"></span>
@@ -157,8 +162,9 @@
                         <textarea id="text_content" name="text_content" rows="12"
                             x-init="updateWords($el.value)"
                             @input="updateWords($event.target.value)"
+                            :disabled="fileName !== ''"
                             placeholder="Paste or type your assignment text here."
-                            class="w-full box-sizing-border bg-white border border-slate-500 rounded-sm p-3.5 font-sans text-[14.5px] leading-[1.7] text-ink focus:border-navy-light focus:outline-none"
+                            class="w-full box-sizing-border bg-white border border-slate-500 rounded-sm p-3.5 font-sans text-[14.5px] leading-[1.7] text-ink focus:border-navy-light focus:outline-none disabled:cursor-not-allowed"
                             >{{ old('text_content') }}</textarea>
                         <x-input-error :messages="$errors->get('text_content')" class="mt-2" />
                     </div>

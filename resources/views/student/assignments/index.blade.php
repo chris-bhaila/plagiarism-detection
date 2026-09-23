@@ -29,8 +29,12 @@
                 @php
                     $assignment = $row->assignment;
                     $isOverdue = ! $row->submission && $assignment->due_date && $assignment->due_date->isPast();
+                    $checkLabel = $row->submission?->isSimilarityReleased()
+                        ? \App\Models\SimilarityReport::studentFacingLabel($row->submission->topSimilarityReport()?->status)
+                        : null;
                 @endphp
-                <div class="flex items-center justify-between gap-6 px-6 py-4 border-b border-slate-200 last:border-b-0 hover:bg-slate-50">
+                <a href="{{ route('assignments.submit.show', $assignment) }}"
+                   class="flex items-center justify-between gap-6 px-6 py-4 border-b border-slate-200 last:border-b-0 hover:bg-slate-50">
                     <div>
                         <div class="text-[15px] font-medium">{{ $assignment->title }}</div>
                         <div class="mt-1 text-[12.5px] text-slate-800">
@@ -44,19 +48,22 @@
                         @if ($row->submission && $row->submission->hasUnseenActivity())
                             <span class="text-[11px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded-sm bg-info-bg text-info-ink border border-navy-light" title="Your instructor left a note or released a similarity status since you last checked">New</span>
                         @endif
-                        @if ($row->submission)
+                        @if ($checkLabel)
+                            <span class="text-[11px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded-sm {{ $checkLabel['bg'] }} {{ $checkLabel['fg'] }} border {{ $checkLabel['border'] }}">
+                                {{ $checkLabel['label'] }}
+                            </span>
+                        @elseif ($row->submission)
                             <span class="text-[11px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded-sm bg-ok-bg text-ok-deep border border-ok-border">Submitted</span>
                         @elseif ($isOverdue)
                             <span class="text-[11px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded-sm bg-danger-bg text-danger-deep border border-danger-border">Overdue</span>
                         @else
                             <span class="text-[11px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded-sm bg-slate-100 text-slate-900 border border-slate-300">Not submitted</span>
                         @endif
-                        <a href="{{ route('assignments.submit.show', $assignment) }}"
-                           class="text-[12.5px] font-semibold px-3.5 py-1.5 rounded-sm border border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light">
+                        <span class="text-[12.5px] font-semibold px-3.5 py-1.5 rounded-sm border border-slate-500 text-navy bg-white">
                             Open
-                        </a>
+                        </span>
                     </div>
-                </div>
+                </a>
             @empty
                 <p class="px-6 py-10 text-center text-sm text-slate-800">
                     {{ ($search || $status) ? 'No assignments match these filters.' : 'No assignments yet.' }}
