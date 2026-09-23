@@ -52,7 +52,7 @@
                             @foreach ($submission->notes as $note)
                                 <div class="bg-slate-50 border border-slate-200 rounded-sm p-4">
                                     <div class="text-[13px] text-ink leading-[1.6]">{{ $note->body }}</div>
-                                    <div class="mt-1.5 text-[11.5px] text-slate-700">{{ $note->author->name }} &middot; {{ $note->created_at->format('j M Y, H:i') }}</div>
+                                    <div class="mt-1.5 text-[11.5px] text-slate-700">{{ $note->author->name ?? 'Deleted account' }} &middot; {{ $note->created_at->format('j M Y, H:i') }}</div>
                                 </div>
                             @endforeach
                         </div>

@@ -34,11 +34,24 @@ class CheckSubmissionSimilarity implements ShouldQueue
             $this->submission->id,
             $this->submission->text_content,
             $this->submission->assignment_id,
+            $this->submission->student_id,
         );
 
         foreach ($results as $result) {
             $sourceType = $result['source_type'] ?? SimilarityReport::SOURCE_TYPE_SUBMISSION;
             $isWeb = $sourceType === SimilarityReport::SOURCE_TYPE_WEB;
+
+            // Each submission's own check compares against every other
+            // submission on the assignment, so when submission B is later
+            // checked it re-discovers this same A-B pair from its side.
+            // Without this guard that creates a second, independently
+            // updatable row for the same underlying comparison — status
+            // changes on one (confirm/dismiss) silently leave the other
+            // out of sync, and counts that sum reports (dashboard,
+            // "N matched sources") double every peer match.
+            if (! $isWeb && $this->pairAlreadyChecked($result['compared_submission_id'])) {
+                continue;
+            }
 
             $reports->create([
                 'submission_a_id' => $this->submission->id,
@@ -56,5 +69,23 @@ class CheckSubmissionSimilarity implements ShouldQueue
                     : SimilarityReport::STATUS_CLEARED,
             ]);
         }
+    }
+
+    /**
+     * Whether a submission-vs-submission report already exists for this
+     * pair, in either direction.
+     */
+    protected function pairAlreadyChecked(int $otherSubmissionId): bool
+    {
+        return SimilarityReport::where('source_type', SimilarityReport::SOURCE_TYPE_SUBMISSION)
+            ->where(function ($query) use ($otherSubmissionId) {
+                $query->where('submission_a_id', $this->submission->id)
+                    ->where('submission_b_id', $otherSubmissionId);
+            })
+            ->orWhere(function ($query) use ($otherSubmissionId) {
+                $query->where('submission_a_id', $otherSubmissionId)
+                    ->where('submission_b_id', $this->submission->id);
+            })
+            ->exists();
     }
 }

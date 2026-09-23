@@ -29,7 +29,8 @@ trait BuildsSubmissionRows
 
         return $submissions->forAssignment($assignment)
             ->map(function ($submission) use ($threshold) {
-                $top = $submission->similarityReports()->first();
+                $reports = $submission->similarityReports();
+                $top = $reports->first();
                 $score = $top->combined_score ?? 0.0;
 
                 return (object) [
@@ -39,7 +40,18 @@ trait BuildsSubmissionRows
                     'lexical' => $top->lexical_score ?? 0.0,
                     'semantic' => $top->semantic_score ?? 0.0,
                     'status' => $top->status ?? null,
-                    'matchCount' => $submission->similarityReports()->count(),
+                    // A peer pair gets two report rows (once from each
+                    // submission's own check — see CheckSubmissionSimilarity),
+                    // so a plain count() overstates "matched sources" by
+                    // roughly 2x for any assignment with real peer matches.
+                    // Web matches don't have this duplication (no pairKey).
+                    'matchCount' => $reports->filter(fn (SimilarityReport $r) => $r->isWebSource())->count()
+                        + $reports->reject(fn (SimilarityReport $r) => $r->isWebSource())->map->pairKey()->unique()->count(),
+                    // Not just topReport->isWebSource(): a submission can have a
+                    // lower-scoring web match sitting behind a higher-scoring
+                    // peer match, and a teacher should still be able to tell a
+                    // web source was checked at all.
+                    'hasWebMatch' => $reports->contains(fn (SimilarityReport $r) => $r->isWebSource()),
                     'wordCount' => str_word_count(strip_tags($submission->text_content)),
                     'band' => SimilarityReport::scoreBand($score, $threshold),
                 ];

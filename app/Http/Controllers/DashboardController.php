@@ -23,11 +23,17 @@ class DashboardController extends Controller
         $selectedCourse = $courses->firstWhere('id', $request->integer('course'));
         $courseIds = $this->scopedCourseIds($selectedCourse);
 
+        // A peer pair gets two report rows (once from each submission's own
+        // check — see CheckSubmissionSimilarity), independently statusable,
+        // so every count/average below would run roughly 2x real incidents
+        // without this dedup. Web reports have no pair (pairKey() is null),
+        // so they're kept individually via a per-id fallback key.
         $reports = SimilarityReport::with(['submissionA.assignment.course', 'submissionB.assignment'])
             ->when($courseIds !== null, fn ($query) => $query->whereHas(
                 'submissionA.assignment', fn ($query) => $query->whereIn('course_id', $courseIds)
             ))
-            ->get();
+            ->get()
+            ->unique(fn (SimilarityReport $r) => $r->pairKey() ?? 'web-'.$r->id);
 
         $flagged = $reports->filter(
             fn (SimilarityReport $r) => $r->combined_score >= ($r->submissionA->assignment->similarity_threshold ?? 0.35)
@@ -57,6 +63,7 @@ class DashboardController extends Controller
         return view('dashboard.index', [
             'courses' => $courses,
             'selectedCourse' => $selectedCourse,
+            'prefix' => $request->user()->isAdmin() ? 'admin.' : '',
             'totalSubmissions' => $totalSubmissions,
             'totalAssignments' => $totalAssignments,
             'flaggedCount' => $flaggedCount,
@@ -86,15 +93,17 @@ class DashboardController extends Controller
     protected function flagBreakdownByCourse(Collection $flagged): Collection
     {
         return $flagged
-            ->groupBy(fn (SimilarityReport $r) => $r->submissionA->assignment->course->name ?? 'Unknown course')
-            ->map(function (Collection $group, string $courseName) {
+            ->groupBy(fn (SimilarityReport $r) => $r->submissionA->assignment->course_id)
+            ->map(function (Collection $group) {
+                $course = $group->first()->submissionA->assignment->course;
                 $lex = $group->filter(fn ($r) => $r->dominantSignal() === 'lexical')->count();
                 $sem = $group->filter(fn ($r) => $r->dominantSignal() === 'semantic')->count();
                 $both = $group->filter(fn ($r) => $r->dominantSignal() === 'both')->count();
                 $total = max($group->count(), 1);
 
                 return (object) [
-                    'label' => $courseName,
+                    'courseId' => $course?->id,
+                    'label' => $course->name ?? 'Unknown course',
                     'total' => $group->count(),
                     'lexPct' => round($lex / $total * 100),
                     'semPct' => round($sem / $total * 100),
@@ -151,14 +160,20 @@ class DashboardController extends Controller
             ->map(function (Assignment $assignment) {
                 $subs = $assignment->submissions()->count();
 
+                // See the dedup note in index() — a peer pair's two mirrored
+                // rows would otherwise double this assignment's flag count
+                // and skew its average score toward whichever direction
+                // happened to get checked twice.
                 $reports = SimilarityReport::whereHas('submissionA', fn ($q) => $q->where('assignment_id', $assignment->id))
                     ->orWhereHas('submissionB', fn ($q) => $q->where('assignment_id', $assignment->id))
-                    ->get();
+                    ->get()
+                    ->unique(fn (SimilarityReport $r) => $r->pairKey() ?? 'web-'.$r->id);
 
                 $flagged = $reports->filter(fn (SimilarityReport $r) => $r->combined_score >= $assignment->similarity_threshold)->count();
                 $avg = $reports->avg('combined_score') ?? 0;
 
                 return (object) [
+                    'id' => $assignment->id,
                     'name' => $assignment->title,
                     'course' => $assignment->course->code ?? '',
                     'subs' => $subs,

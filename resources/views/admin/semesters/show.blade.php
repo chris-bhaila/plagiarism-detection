@@ -81,10 +81,11 @@
                 <h2 class="mt-8 text-[15px] font-semibold tracking-tight">Teachers</h2>
                 <div class="mt-4 bg-white border border-slate-300 rounded-sm">
                     @forelse ($teachers as $teacher)
-                        <div class="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-slate-200 last:border-b-0">
+                        <a href="{{ route('admin.users.show', $teacher) }}"
+                           class="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-slate-200 last:border-b-0 hover:bg-slate-50">
                             <div class="text-[14px] font-medium">{{ $teacher->name }}</div>
                             <div class="text-[12.5px] text-slate-800">{{ $teacher->email }}</div>
-                        </div>
+                        </a>
                     @empty
                         <p class="px-5 py-8 text-center text-sm text-slate-800">No teachers assigned yet.</p>
                     @endforelse
@@ -97,12 +98,13 @@
 
                 <div class="mt-4 bg-white border border-slate-300 rounded-sm">
                     @forelse ($students as $student)
-                        <div class="flex items-center justify-between gap-4 px-5 py-3 border-b border-slate-200 last:border-b-0">
+                        <a href="{{ route('admin.users.show', $student) }}"
+                           class="flex items-center justify-between gap-4 px-5 py-3 border-b border-slate-200 last:border-b-0 hover:bg-slate-50">
                             <div>
                                 <div class="text-[14px] font-medium">{{ $student->name }}</div>
                                 <div class="mt-0.5 text-[12px] text-slate-700">{{ $student->email }}</div>
                             </div>
-                        </div>
+                        </a>
                     @empty
                         <p class="px-5 py-8 text-center text-sm text-slate-800">No students placed in this semester yet.</p>
                     @endforelse

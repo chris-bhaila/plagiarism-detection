@@ -151,16 +151,49 @@ class SimilarityReport extends Model
     }
 
     /**
+     * Identifies a submission-vs-submission report by its unordered
+     * submission pair, so the two mirrored rows a pair gets — one created
+     * while checking submission A, one while checking submission B —
+     * resolve to the same key regardless of which submission is currently
+     * submission_a_id on this particular row. Null for a web-source report
+     * (submission_b_id is null there, so there's no pair to key by).
+     */
+    public function pairKey(): ?string
+    {
+        if ($this->submission_b_id === null) {
+            return null;
+        }
+
+        $pair = [$this->submission_a_id, $this->submission_b_id];
+        sort($pair);
+
+        return 'pair-'.implode('-', $pair);
+    }
+
+    /**
      * Render a submission's text with matched passages wrapped in <mark>,
      * based on this report's matched_shingles data. The similarity-check
      * API returns this as a flat array of matched phrase strings; a
      * shingle may also be an object with a 'text' key and an optional
      * 'type' ('lexical' or 'semantic', default 'lexical') controlling
      * highlight color — kept for older/seeded data in that shape.
+     *
+     * A stored phrase is NOT a verbatim substring of the original text: the
+     * similarity service lowercases, strips all punctuation, and drops
+     * stopwords before shingling, so e.g. "hash resolution performed
+     * probing" is what gets stored for text that actually reads "...the
+     * hash resolution is performed through probing." An exact/literal
+     * match against that would silently miss almost every real match —
+     * confirmed on a report with 20 matched_shingles where a literal
+     * str_ireplace only ever highlighted 2 of them. phrasePattern() below
+     * anchors on each stripped content word and tolerates a bounded gap
+     * (dropped stopwords, citation brackets, stray whitespace) between
+     * them instead.
      */
     public function highlight(string $text): string
     {
         $escaped = e($text);
+        $spans = [];
 
         foreach ($this->matched_shingles ?? [] as $shingle) {
             $phrase = is_array($shingle) ? ($shingle['text'] ?? null) : $shingle;
@@ -174,14 +207,71 @@ class SimilarityReport extends Model
                 ? 'bg-[#dfe9e6] border-b-2 border-[#4e8478]'
                 : 'bg-[#cfe0f0] border-b-2 border-[#2a5c8f]';
 
-            $escapedPhrase = e($phrase);
-            $escaped = str_ireplace(
-                $escapedPhrase,
-                '<mark class="'.$classes.' px-0 py-0.5">'.$escapedPhrase.'</mark>',
-                $escaped,
-            );
+            $pattern = $this->phrasePattern($phrase);
+
+            if ($pattern !== null && preg_match('/'.$pattern.'/i', $escaped, $m, PREG_OFFSET_CAPTURE)) {
+                [$matchText, $start] = $m[0];
+                $spans[] = ['start' => $start, 'end' => $start + strlen($matchText), 'classes' => $classes];
+            }
         }
 
-        return nl2br($escaped);
+        return nl2br($this->applySpans($escaped, $spans));
+    }
+
+    /**
+     * Builds a regex for a stripped shingle phrase ("hash resolution
+     * performed probing") that finds it in ordinary punctuated text. Each
+     * content word is required verbatim; between them, up to 3 dropped
+     * stopwords/citation-marker-style tokens plus any punctuation are
+     * tolerated — generous enough for real prose without matching across
+     * unrelated stretches of text.
+     */
+    private function phrasePattern(string $phrase): ?string
+    {
+        $words = array_values(array_filter(explode(' ', trim($phrase))));
+
+        if (! $words) {
+            return null;
+        }
+
+        $connector = '[^a-zA-Z0-9]*(?:[a-zA-Z0-9]+[^a-zA-Z0-9]+){0,3}';
+
+        return implode($connector, array_map(
+            fn ($w) => preg_quote($w, '/'),
+            $words,
+        ));
+    }
+
+    /**
+     * Wraps each matched span in a <mark>, left to right over the already-
+     * escaped text. Building the whole result in one pass — rather than
+     * mutating $escaped per shingle — means a later shingle's fuzzy regex
+     * can never accidentally match into an earlier shingle's own <mark ...>
+     * markup, and overlapping spans are simply skipped instead of nesting.
+     *
+     * @param  array<int, array{start:int,end:int,classes:string}>  $spans
+     */
+    private function applySpans(string $escaped, array $spans): string
+    {
+        usort($spans, fn ($a, $b) => $a['start'] <=> $b['start']);
+
+        $out = '';
+        $cursor = 0;
+
+        foreach ($spans as $span) {
+            if ($span['start'] < $cursor) {
+                continue;
+            }
+
+            $out .= substr($escaped, $cursor, $span['start'] - $cursor);
+            $out .= '<mark class="'.$span['classes'].' px-0 py-0.5">';
+            $out .= substr($escaped, $span['start'], $span['end'] - $span['start']);
+            $out .= '</mark>';
+            $cursor = $span['end'];
+        }
+
+        $out .= substr($escaped, $cursor);
+
+        return $out;
     }
 }

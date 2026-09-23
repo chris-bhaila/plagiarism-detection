@@ -70,17 +70,17 @@
 
                 <div class="mt-6 grid gap-5">
                     @forelse ($bars as $bar)
-                        <div>
+                        <a href="{{ route('dashboard', ['course' => $bar->courseId]) }}" class="block group">
                             <div class="flex justify-between items-baseline text-[13px]">
-                                <span class="font-medium">{{ $bar->label }}</span>
+                                <span class="font-medium group-hover:text-navy group-hover:underline">{{ $bar->label }}</span>
                                 <span class="text-slate-800 tabular-nums">{{ $bar->total }} {{ Str::plural('flag', $bar->total) }}</span>
                             </div>
-                            <div class="mt-2 flex h-[18px] rounded-sm overflow-hidden bg-slate-200">
+                            <div class="mt-2 flex h-[18px] rounded-sm overflow-hidden bg-slate-200 group-hover:opacity-85">
                                 <div class="bg-navy-light" style="width: {{ $bar->lexPct }}%"></div>
                                 <div class="bg-navy-lighter" style="width: {{ $bar->semPct }}%"></div>
                                 <div class="bg-slate-500" style="width: {{ $bar->bothPct }}%"></div>
                             </div>
-                        </div>
+                        </a>
                     @empty
                         <p class="text-sm text-slate-800">No flagged reports yet.</p>
                     @endforelse
@@ -98,9 +98,10 @@
                         <div class="text-right">Avg score</div>
                     </div>
                     @forelse ($topAssignments as $row)
-                        <div class="grid grid-cols-[minmax(0,1fr)_74px_80px_90px] gap-3.5 px-5 py-3 border-b border-slate-200 items-baseline hover:bg-slate-50">
+                        <a href="{{ route($prefix.'assignments.submissions', $row->id) }}"
+                           class="grid grid-cols-[minmax(0,1fr)_74px_80px_90px] gap-3.5 px-5 py-3 border-b border-slate-200 items-baseline hover:bg-slate-50">
                             <div class="min-w-0">
-                                <div class="text-[13.5px] font-medium">{{ $row->name }}</div>
+                                <div class="text-[13.5px] font-medium hover:text-navy hover:underline">{{ $row->name }}</div>
                                 <div class="mt-0.5 text-xs text-slate-700">{{ $row->course }}</div>
                             </div>
                             <div class="text-right text-[13.5px] tabular-nums text-slate-900">{{ $row->subs }}</div>
@@ -108,7 +109,7 @@
                             <div class="text-right">
                                 <span class="text-[13.5px] font-semibold tabular-nums {{ $row->band['ink'] }} {{ $row->band['bg'] }} px-2 py-0.5 rounded-sm">{{ $row->avg }}%</span>
                             </div>
-                        </div>
+                        </a>
                     @empty
                         <div class="px-5 py-6 text-sm text-slate-800">No assignments yet.</div>
                     @endforelse

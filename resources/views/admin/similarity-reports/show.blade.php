@@ -5,7 +5,7 @@
     $statusJustChanged = in_array($report->id, session('reportStatusJustChanged', []));
 @endphp
 
-<x-app-layout>
+<x-app-layout max-width="wide">
     <div class="pt-8 pb-20">
 
         <div class="text-[12.5px] text-slate-800">
@@ -18,16 +18,16 @@
 
         <div class="mt-6 flex flex-wrap gap-7 items-start">
 
-            <div class="flex-1 min-w-[320px] basis-[620px]">
+            <div class="flex-1 min-w-[320px]">
                 <div class="flex items-end justify-between gap-6 flex-wrap">
                     <div>
                         <h1 class="m-0 text-2xl font-semibold tracking-tight">
-                            {{ $report->submissionA->student->name }}
+                            {{ $focus->student->name }}
                             <span class="text-slate-600 font-normal">&nbsp;vs&nbsp;</span>
                             @if ($report->isWebSource())
                                 web source
                             @else
-                                {{ $report->submissionB->student->name }}
+                                {{ $counterpart->student->name }}
                             @endif
                         </h1>
                         <div class="mt-2 text-[13px] text-slate-900">
@@ -48,16 +48,16 @@
                 </div>
 
                 <div class="mt-5 grid gap-5" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
-                    @include('partials.similarity-source-card', ['submission' => $report->submissionA, 'side' => 'A', 'report' => $report, 'prefix' => 'admin.'])
+                    @include('partials.similarity-source-card', ['submission' => $focus, 'side' => 'A', 'report' => $report, 'prefix' => 'admin.'])
                     @if ($report->isWebSource())
                         @include('partials.similarity-web-source-card', ['report' => $report])
                     @else
-                        @include('partials.similarity-source-card', ['submission' => $report->submissionB, 'side' => 'B', 'report' => $report, 'prefix' => 'admin.'])
+                        @include('partials.similarity-source-card', ['submission' => $counterpart, 'side' => 'B', 'report' => $report, 'prefix' => 'admin.'])
                     @endif
                 </div>
             </div>
 
-            <div class="flex-1 min-w-[260px] basis-[280px] sticky top-[84px] grid gap-5">
+            <div class="w-full sm:w-[300px] shrink-0 sticky top-[84px] grid gap-5">
 
                 <div class="bg-white border border-slate-300 rounded-sm p-5">
                     <div class="text-[11.5px] font-semibold tracking-wide uppercase text-slate-800">Combined similarity</div>
@@ -101,7 +101,7 @@
                         </span>
                     </div>
                     <div class="mt-4.5 grid gap-2">
-                        <form method="POST" action="{{ route('admin.similarity-reports.update-status', $report) }}">
+                        <form method="POST" action="{{ route('admin.similarity-reports.update-status', ['similarityReport' => $report, 'for' => $focus->id]) }}">
                             @csrf
                             @method('PATCH')
                             <input type="hidden" name="status" value="confirmed">
@@ -109,7 +109,7 @@
                                 Confirm misconduct concern
                             </button>
                         </form>
-                        <form method="POST" action="{{ route('admin.similarity-reports.update-status', $report) }}">
+                        <form method="POST" action="{{ route('admin.similarity-reports.update-status', ['similarityReport' => $report, 'for' => $focus->id]) }}">
                             @csrf
                             @method('PATCH')
                             <input type="hidden" name="status" value="reviewed">
@@ -117,7 +117,7 @@
                                 Mark as reviewed
                             </button>
                         </form>
-                        <form method="POST" action="{{ route('admin.similarity-reports.update-status', $report) }}">
+                        <form method="POST" action="{{ route('admin.similarity-reports.update-status', ['similarityReport' => $report, 'for' => $focus->id]) }}">
                             @csrf
                             @method('PATCH')
                             <input type="hidden" name="status" value="dismissed">
@@ -134,10 +134,11 @@
                         <div class="text-[11.5px] font-semibold tracking-wide uppercase text-slate-800">Other matches</div>
                         <div class="mt-3 grid gap-2.5">
                             @foreach ($otherMatches as $match)
-                                <div class="flex justify-between text-[13px]">
-                                    <span>{{ $match->label }}</span>
+                                <a href="{{ route('admin.similarity-reports.show', ['similarityReport' => $match->id, 'for' => $match->for]) }}"
+                                   class="flex justify-between text-[13px] hover:text-navy hover:underline">
+                                    <span>{{ $match->isWeb ? '🌐 ' : '' }}{{ $match->label }}</span>
                                     <span class="font-semibold tabular-nums">{{ round($match->score * 100) }}%</span>
-                                </div>
+                                </a>
                             @endforeach
                         </div>
                     </div>

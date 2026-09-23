@@ -29,7 +29,7 @@
                 </button>
             </form>
             @if ($topReport)
-                <a href="{{ route($prefix.'similarity-reports.show', $topReport) }}"
+                <a href="{{ route($prefix.'similarity-reports.show', ['similarityReport' => $topReport, 'for' => $submission->id]) }}"
                    class="text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light">
                     Open similarity report
                 </a>

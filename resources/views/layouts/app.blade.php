@@ -22,6 +22,7 @@
         $containerClass = match ($maxWidth) {
             'narrow' => 'max-w-[640px]',
             'form' => 'max-w-[760px]',
+            'wide' => 'max-w-[1600px]',
             default => 'max-w-[1360px]',
         };
     @endphp

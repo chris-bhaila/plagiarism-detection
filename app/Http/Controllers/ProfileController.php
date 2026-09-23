@@ -102,6 +102,19 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        // Unlike a teacher or student, an admin has no other self-service
+        // path back into the app once their account is gone — new admins
+        // are provisioned directly against the database, not through the
+        // UI (see AdminUserController::store's deliberate exclusion of the
+        // admin role). Same reasoning as the existing self-demote and
+        // self-disable guards in AdminUserController; this just extends it
+        // to the one remaining way an admin could lock themselves out.
+        if ($user->isAdmin()) {
+            return back()->withErrors([
+                'password' => "Admin accounts can't be deleted from here — ask another admin, or remove it directly in the database.",
+            ], 'userDeletion');
+        }
+
         Auth::logout();
 
         $user->delete();

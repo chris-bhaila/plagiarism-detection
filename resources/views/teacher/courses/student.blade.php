@@ -6,7 +6,10 @@
 
         <div class="mt-2.5">
             <h1 class="text-[28px] font-semibold tracking-tight">{{ $student->name }}</h1>
-            <div class="mt-1.5 text-[13px] text-slate-900">{{ $student->email }} &middot; {{ $course->code }}</div>
+            <div class="mt-1.5 text-[13px] text-slate-900">
+                <a href="mailto:{{ $student->email }}" class="hover:underline hover:text-navy">{{ $student->email }}</a>
+                &middot; {{ $course->code }}
+            </div>
         </div>
 
         <div class="mt-9">
@@ -31,7 +34,7 @@
                             @if ($submission)
                                 <div class="text-[12px] text-slate-800">Submitted {{ $submission->submitted_at?->format('j M, H:i') }}</div>
                                 @if ($row->topReport)
-                                    <a href="{{ route('similarity-reports.show', $row->topReport) }}"
+                                    <a href="{{ route('similarity-reports.show', ['similarityReport' => $row->topReport, 'for' => $submission->id]) }}"
                                        class="mt-1 inline-block text-[10.5px] font-semibold px-1.5 py-0.5 rounded-sm border {{ $status['bg'] }} {{ $status['fg'] }} {{ $status['border'] }}">
                                         {{ ucfirst($row->topReport->status) }}
                                     </a>

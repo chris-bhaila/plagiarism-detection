@@ -1,7 +1,11 @@
 <x-app-layout>
     <div class="pt-10 pb-20" x-data="{ selected: [] }">
 
-        <div class="flex items-end justify-between gap-10 flex-wrap">
+        <a href="{{ route('courses.show', $assignment->course) }}" class="text-[12.5px] text-slate-800 hover:text-ink">
+            &larr; Back to {{ $assignment->course->name }}
+        </a>
+
+        <div class="mt-2.5 flex items-end justify-between gap-10 flex-wrap">
             <div>
                 <div class="text-xs font-semibold tracking-[0.9px] uppercase text-slate-800">
                     {{ $assignment->course->code }} · {{ $assignment->title }}
@@ -121,7 +125,7 @@
                     <div class="min-w-0">
                         <div class="text-[15px] font-medium tracking-tight flex items-center gap-2">
                             {{ $row->submission->student->name }}
-                            @if ($row->topReport?->isWebSource())
+                            @if ($row->hasWebMatch)
                                 <span class="inline-flex items-center gap-1 text-[10.5px] font-bold tracking-wide uppercase text-info-ink bg-info-bg border border-info-border px-1.5 py-0.5 rounded-sm">
                                     🌐 Web match
                                 </span>
@@ -185,7 +189,7 @@
                             View
                         </a>
                         @if ($row->topReport)
-                            <a href="{{ route('similarity-reports.show', $row->topReport) }}"
+                            <a href="{{ route('similarity-reports.show', ['similarityReport' => $row->topReport, 'for' => $row->submission->id]) }}"
                                class="inline-block text-[12.5px] font-semibold px-3 py-1.5 rounded-sm border border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light">
                                 Report
                             </a>

@@ -20,10 +20,15 @@ class SimilarityCheckClient
      * same assignment. Returns an array of score results, one per
      * comparison, or an empty array if the check fails.
      */
-    public function checkSubmission(int $submissionId, string $text, int $assignmentId): array
+    public function checkSubmission(int $submissionId, string $text, int $assignmentId, int $studentId): array
     {
+        // Excludes every submission by this same student, not just this
+        // exact row — a student may submit more than once (revision), and
+        // without this a resubmission gets checked against the student's
+        // own earlier attempt and can come back flagged as if it were
+        // another student's work.
         $existingSubmissions = Submission::where('assignment_id', $assignmentId)
-            ->where('id', '!=', $submissionId)
+            ->where('student_id', '!=', $studentId)
             ->get(['id', 'text_content']);
 
         $checkWeb = (bool) config('services.similarity_check.check_web', true);

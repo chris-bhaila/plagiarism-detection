@@ -10,14 +10,23 @@
         </div>
 
         <div class="mt-9 grid gap-8" style="grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));">
-            <div>
+            <div x-data="{
+                        q: '',
+                        matches(haystack) { return haystack.includes(this.q.toLowerCase()); },
+                    }"
+                    x-init="creating && $nextTick(() => $refs.title.focus())">
                 <div class="flex items-end justify-between gap-4 flex-wrap">
                     <h2 class="text-[15px] font-semibold tracking-tight">Assignments</h2>
-                    <button @click="creating = !creating" type="button"
+                    <button @click="creating = !creating; if (creating) $nextTick(() => $refs.title.focus())" type="button"
                         class="text-[12px] font-semibold px-3 py-1.5 rounded-sm border border-slate-500 text-navy bg-white hover:bg-info-bg hover:border-navy-light">
                         <span x-text="creating ? 'Cancel' : '+ New assignment'"></span>
                     </button>
                 </div>
+
+                @if ($assignments->count() > 5)
+                    <input type="text" x-model="q" placeholder="Filter by title"
+                        class="mt-3 w-full max-w-[320px] bg-white border border-slate-500 rounded-sm px-3 py-2 text-[13.5px] text-ink focus:border-navy-light focus:outline-none">
+                @endif
 
                 <div x-show="creating" x-cloak x-transition class="mt-4 bg-white border border-slate-300 rounded-sm p-6">
                     <form method="POST" action="{{ route('assignments.store') }}" class="grid gap-5" enctype="multipart/form-data" @submit="submitting = true">
@@ -26,7 +35,7 @@
 
                         <div>
                             <x-input-label for="title" value="Title" />
-                            <x-text-input id="title" type="text" name="title" :value="old('title')" placeholder="Essay: The History of the Internet" required autofocus />
+                            <x-text-input x-ref="title" id="title" type="text" name="title" :value="old('title')" placeholder="Essay: The History of the Internet" required />
                             <x-input-error :messages="$errors->get('title')" class="mt-1.5" />
                         </div>
 
@@ -68,7 +77,8 @@
 
                 <div class="mt-4 bg-white border border-slate-300 rounded-sm">
                     @forelse ($assignments as $assignment)
-                        <div class="flex items-center justify-between gap-6 px-5 py-4 border-b border-slate-200 last:border-b-0 hover:bg-slate-50">
+                        <div x-show="matches(@js(Str::lower($assignment->title)))" x-cloak x-transition.opacity.duration.100ms
+                             class="flex items-center justify-between gap-6 px-5 py-4 border-b border-slate-200 last:border-b-0 hover:bg-slate-50">
                             <div>
                                 <div class="text-[14.5px] font-medium">{{ $assignment->title }}</div>
                                 <div class="mt-1 text-[12.5px] text-slate-800 flex items-center gap-2 flex-wrap">
@@ -127,7 +137,10 @@
                            class="flex items-center justify-between gap-4 px-5 py-3 border-b border-slate-200 last:border-b-0 hover:bg-slate-50">
                             <div>
                                 <div class="text-[14px] font-medium text-ink">{{ $student->name }}</div>
-                                <div class="mt-0.5 text-[12px] text-slate-700">{{ $student->email }}</div>
+                                <div class="mt-0.5 text-[12px] text-slate-700 hover:underline hover:text-navy"
+                                     onclick="event.preventDefault(); event.stopPropagation(); window.location.href = 'mailto:{{ $student->email }}'">
+                                    {{ $student->email }}
+                                </div>
                             </div>
                         </a>
                     @empty
