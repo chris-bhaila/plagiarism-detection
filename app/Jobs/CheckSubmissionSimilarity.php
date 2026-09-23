@@ -37,13 +37,20 @@ class CheckSubmissionSimilarity implements ShouldQueue
         );
 
         foreach ($results as $result) {
+            $sourceType = $result['source_type'] ?? SimilarityReport::SOURCE_TYPE_SUBMISSION;
+            $isWeb = $sourceType === SimilarityReport::SOURCE_TYPE_WEB;
+
             $reports->create([
                 'submission_a_id' => $this->submission->id,
-                'submission_b_id' => $result['compared_submission_id'],
+                'submission_b_id' => $isWeb ? null : $result['compared_submission_id'],
+                'source_type' => $sourceType,
+                'source_url' => $isWeb ? ($result['source_url'] ?? null) : null,
+                'source_title' => $isWeb ? ($result['source_title'] ?? null) : null,
                 'lexical_score' => $result['lexical_score'],
                 'semantic_score' => $result['semantic_score'],
                 'combined_score' => $result['combined_score'],
                 'matched_shingles' => $result['matched_shingles'] ?? null,
+                'matched_web_passage' => $isWeb ? ($result['matched_passage'] ?? null) : null,
                 'status' => $result['combined_score'] >= $this->submission->assignment->similarity_threshold
                     ? SimilarityReport::STATUS_PENDING
                     : SimilarityReport::STATUS_CLEARED,

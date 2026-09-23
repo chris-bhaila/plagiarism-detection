@@ -44,6 +44,9 @@ class DashboardController extends Controller
         $confirmedCount = $reports->where('status', SimilarityReport::STATUS_CONFIRMED)->count();
         $dismissedCount = $reports->where('status', SimilarityReport::STATUS_DISMISSED)->count();
 
+        $studentFlaggedCount = $flagged->where('source_type', SimilarityReport::SOURCE_TYPE_SUBMISSION)->count();
+        $webFlaggedCount = $flagged->where('source_type', SimilarityReport::SOURCE_TYPE_WEB)->count();
+
         $avgLexical = $reports->avg('lexical_score') ?? 0;
         $avgSemantic = $reports->avg('semantic_score') ?? 0;
         $avgCombined = $reports->avg('combined_score') ?? 0;
@@ -62,6 +65,9 @@ class DashboardController extends Controller
             'confirmedCount' => $confirmedCount,
             'dismissedCount' => $dismissedCount,
             'confirmedPctOfFlagged' => $flaggedCount > 0 ? round($confirmedCount / $flaggedCount * 100) : 0,
+            'studentFlaggedCount' => $studentFlaggedCount,
+            'webFlaggedCount' => $webFlaggedCount,
+            'webFlaggedPctOfFlagged' => $flaggedCount > 0 ? round($webFlaggedCount / $flaggedCount * 100) : 0,
             'avgLexicalPct' => round($avgLexical * 100),
             'avgSemanticPct' => round($avgSemantic * 100),
             'avgCombinedPct' => round($avgCombined * 100),

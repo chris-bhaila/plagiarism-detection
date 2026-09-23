@@ -27,14 +27,22 @@ class SimilarityReport extends Model
      */
     public const STATUS_CLEARED = 'cleared';
 
+    public const SOURCE_TYPE_SUBMISSION = 'submission';
+
+    public const SOURCE_TYPE_WEB = 'web';
+
     protected $fillable = [
         'submission_a_id',
         'submission_b_id',
+        'source_type',
+        'source_url',
+        'source_title',
         'lexical_score',
         'semantic_score',
         'combined_score',
         'status',
         'matched_shingles',
+        'matched_web_passage',
     ];
 
     protected function casts(): array
@@ -61,6 +69,11 @@ class SimilarityReport extends Model
     public function submissionB(): BelongsTo
     {
         return $this->belongsTo(Submission::class, 'submission_b_id');
+    }
+
+    public function isWebSource(): bool
+    {
+        return $this->source_type === self::SOURCE_TYPE_WEB;
     }
 
     /**

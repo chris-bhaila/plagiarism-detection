@@ -26,7 +26,12 @@ class SimilarityCheckClient
             ->where('id', '!=', $submissionId)
             ->get(['id', 'text_content']);
 
-        if ($existingSubmissions->isEmpty()) {
+        $checkWeb = (bool) config('services.similarity_check.check_web', true);
+
+        // A lone submission with no other students to compare against can
+        // still match a web source, so only skip the call entirely when
+        // there's neither a peer submission nor a web check to run.
+        if ($existingSubmissions->isEmpty() && ! $checkWeb) {
             return [];
         }
 
@@ -41,6 +46,7 @@ class SimilarityCheckClient
                     'text' => $submission->text_content,
                 ];
             })->values()->toArray(),
+            'check_web' => $checkWeb,
         ];
 
         try {

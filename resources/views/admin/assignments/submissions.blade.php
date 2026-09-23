@@ -123,7 +123,14 @@
                         <span></span>
                     @endif
                     <div class="min-w-0">
-                        <div class="text-[15px] font-medium tracking-tight">{{ $row->submission->student->name }}</div>
+                        <div class="text-[15px] font-medium tracking-tight flex items-center gap-2">
+                            {{ $row->submission->student->name }}
+                            @if ($row->topReport?->isWebSource())
+                                <span class="inline-flex items-center gap-1 text-[10.5px] font-bold tracking-wide uppercase text-info-ink bg-info-bg border border-info-border px-1.5 py-0.5 rounded-sm">
+                                    🌐 Web match
+                                </span>
+                            @endif
+                        </div>
                         <div class="mt-1 text-[12.5px] text-slate-800 flex flex-wrap gap-x-3.5 gap-y-1">
                             <span class="font-mono whitespace-nowrap">S-{{ str_pad($row->submission->student_id, 5, '0', STR_PAD_LEFT) }}</span>
                             <span class="whitespace-nowrap">{{ $row->submission->submitted_at?->format('j M, H:i') }}</span>
@@ -160,7 +167,7 @@
                             {{ $row->status ? ucfirst($row->status) : 'No match' }}
                         </span>
                         <div class="mt-1.5 text-[11.5px] text-slate-700">
-                            {{ $row->matchCount }} matched {{ Str::plural('submission', $row->matchCount) }}
+                            {{ $row->matchCount }} matched {{ Str::plural('source', $row->matchCount) }}
                         </div>
                     </div>
 

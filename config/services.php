@@ -37,6 +37,7 @@ return [
 
     'similarity_check' => [
         'url' => env('SIMILARITY_CHECK_API_URL', 'http://127.0.0.1:8001'),
+        'check_web' => env('SIMILARITY_CHECK_ENABLE_WEB', true),
     ],
 
 ];

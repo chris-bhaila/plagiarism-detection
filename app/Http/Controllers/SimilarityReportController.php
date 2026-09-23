@@ -29,11 +29,15 @@ class SimilarityReportController extends Controller
 
         abort_if($similarityReport->submissionA->assignment->course->teacher_id !== $request->user()->id, 403);
 
-        $otherMatches = $this->counterpartMatches($similarityReport, $similarityReport->submissionA)
-            ->merge($this->counterpartMatches($similarityReport, $similarityReport->submissionB))
-            ->sortByDesc('score')
-            ->take(5)
-            ->values();
+        $otherMatches = $this->counterpartMatches($similarityReport, $similarityReport->submissionA);
+
+        if ($similarityReport->submissionB) {
+            $otherMatches = $otherMatches->merge(
+                $this->counterpartMatches($similarityReport, $similarityReport->submissionB)
+            );
+        }
+
+        $otherMatches = $otherMatches->sortByDesc('score')->take(5)->values();
 
         $shingles = $similarityReport->matched_shingles ?? [];
         $matchedWords = collect($shingles)->sum(fn ($s) => str_word_count(is_array($s) ? ($s['text'] ?? '') : (string) $s));
@@ -109,6 +113,13 @@ class SimilarityReportController extends Controller
         return $this->reports->forSubmission($submission)
             ->reject(fn (SimilarityReport $r) => $r->id === $current->id)
             ->map(function (SimilarityReport $r) use ($submission) {
+                if ($r->isWebSource()) {
+                    return (object) [
+                        'label' => $r->source_title ?: (parse_url($r->source_url ?? '', PHP_URL_HOST) ?: 'Web source'),
+                        'score' => $r->combined_score,
+                    ];
+                }
+
                 $other = $r->submission_a_id === $submission->id
                     ? $r->submissionB()->with('student')->first()
                     : $r->submissionA()->with('student')->first();

@@ -46,6 +46,15 @@
                 <div class="mt-3.5 text-[44px] font-semibold tracking-tight leading-none tabular-nums">{{ number_format($confirmedCount) }}</div>
                 <div class="mt-3 text-[12.5px] text-slate-900">{{ $confirmedPctOfFlagged }}% of flags, {{ $dismissedCount }} dismissed</div>
             </div>
+            <div class="bg-white border border-slate-300 rounded-sm p-6">
+                <div class="text-[11.5px] font-semibold tracking-wide uppercase text-slate-800">Flags by source</div>
+                <div class="mt-3.5 flex items-baseline gap-2.5">
+                    <span class="text-[44px] font-semibold tracking-tight leading-none tabular-nums">{{ $webFlaggedPctOfFlagged }}</span>
+                    <span class="text-xl font-semibold">%</span>
+                    <span class="text-[13px] text-slate-900">web</span>
+                </div>
+                <div class="mt-3 text-[12.5px] text-slate-900">{{ number_format($studentFlaggedCount) }} student · {{ number_format($webFlaggedCount) }} 🌐 web</div>
+            </div>
         </div>
 
         <div class="mt-11 grid gap-11 items-start" style="grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));">
